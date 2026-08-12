@@ -157,6 +157,42 @@ export const KINDS = {
     discover: null,
   },
 
+  'cursor-agent': {
+    id: 'cursor-agent',
+    displayName: 'Cursor',
+    bin: 'cursor-agent',
+    envVar: 'CCR_CURSOR_AGENT',
+    // The installer symlinks both names into ~/.local/bin. `agent` is the one it
+    // advertises, but that name is generic enough to collide, so the specific
+    // symlink is preferred and `agent` is only a fallback.
+    binCandidates: [
+      path.join(HOME, '.local', 'bin', 'cursor-agent'),
+      path.join(HOME, '.local', 'bin', 'agent'),
+      '/opt/homebrew/bin/cursor-agent',
+      '/usr/local/bin/cursor-agent',
+    ],
+    icon: '▲',
+    glyph: 'CU',
+    color: '#8b5cf6',
+    launchArgv: ({ args }) => argList(args),
+    // `--resume [chatId]` takes an OPTIONAL id: with one it reopens that chat,
+    // without one the CLI shows its own picker. Both are useful from a phone, so
+    // an absent sessionId is passed through rather than treated as an error.
+    resumeArgv: ({ sessionId, args }) => (
+      sessionId
+        ? ['--resume', sessionId, ...argList(args)]
+        : ['--resume', ...argList(args)]
+    ),
+    isResumeId: (id) => SAFE_ID.test(id),
+    refFor: (entry) => entry.sessionId,
+    // Launch-only in the unified list, and unlike opencode this is not a
+    // dependency question: cursor-agent keeps its chats server-side. ~/.cursor/agents
+    // is empty and the local tracking DB holds only commit line-attribution, with
+    // zero conversation rows — so there is genuinely nothing on this machine to
+    // enumerate. `--resume` with no id hands that job to the CLI's own picker.
+    discover: null,
+  },
+
   shell: {
     id: 'shell',
     displayName: 'Shell',
