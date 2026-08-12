@@ -17,6 +17,7 @@ import {
 import { applyServerKinds, getKind } from './kinds.js';
 import { createSessionsView } from './views/sessions.js';
 import { createUsageView } from './views/usage.js';
+import { createAssistantView } from './views/assistant.js';
 import { createKeybar } from './keybar.js';
 import {
   getSessionTerm, dropSessionTerm, disconnectAll, getFontSize,
@@ -39,11 +40,12 @@ const views = {
 /** The tabbed screens inside `#shell`, keyed by their `data-tab` value. */
 const tabViews = {
   sessions: document.getElementById('view-sessions'),
+  assistant: document.getElementById('view-assistant'),
   usage: document.getElementById('view-usage'),
 };
 
-const TAB_ICONS = { sessions: 'terminal', usage: 'chart' };
-const TAB_LABELS = { sessions: 'Sessions', usage: 'Usage' };
+const TAB_ICONS = { sessions: 'terminal', assistant: 'sparkle', usage: 'chart' };
+const TAB_LABELS = { sessions: 'Sessions', assistant: 'Assistant', usage: 'Usage' };
 
 const els = {
   tokenForm: document.getElementById('token-form'),
@@ -82,8 +84,11 @@ let lastTab = 'sessions'; // the tab to come back to when the terminal closes
 
 const sessionsView = createSessionsView({ onOpen: openSession });
 const usageView = createUsageView();
+// Same onOpen contract as the sessions view: the assistant's Run button creates a
+// custom session and hands it back here to open. The model never executes anything.
+const assistantView = createAssistantView({ onOpen: openSession });
 
-const tabViewApis = { sessions: sessionsView, usage: usageView };
+const tabViewApis = { sessions: sessionsView, assistant: assistantView, usage: usageView };
 
 const keybar = createKeybar(els.keybar, {
   send: (data) => term?.sendRaw(data),

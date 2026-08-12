@@ -81,6 +81,12 @@ const ICONS = {
     '<rect x="5" y="12" width="3.6" height="5"/>' +
     '<rect x="10.2" y="7" width="3.6" height="10"/>' +
     '<rect x="15.4" y="10" width="3.6" height="7"/>',
+  // Two four-point stars: the assistant tab. Drawn as strokes like every other
+  // glyph here so it inherits currentColor and the shared stroke width.
+  sparkle:
+    '<path d="M11 3.5 12.6 8 17 9.6 12.6 11.2 11 15.7 9.4 11.2 5 9.6 9.4 8Z"/>' +
+    '<path d="M17.5 14.5 18.4 17 21 17.9 18.4 18.8 17.5 21.3 16.6 18.8 14 17.9 16.6 17Z"/>',
+  play: '<polygon points="7,4.5 19,12 7,19.5"/>',
 };
 
 export function icon(name, size = 21) {

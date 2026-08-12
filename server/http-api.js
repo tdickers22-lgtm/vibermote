@@ -56,6 +56,7 @@ import {
 } from './saved-commands.js';
 import * as tmuxApi from './tmux.js';
 import * as usage from './usage.js';
+import { readPower } from './power.js';
 import { log, summarize } from './util.js';
 
 const MAX_BODY_BYTES = 64 * 1024;
@@ -219,6 +220,10 @@ async function handleApi(req, res, url, pathname, bindInfo) {
         dormant: sessions.length - liveCount,
         byKind,
       },
+      // On battery this Mac sleeps after 1 minute idle, which drops every session
+      // with no explanation on the phone; on AC it never sleeps. Reporting it here
+      // is what lets the client say "plug your Mac in" instead of just dying.
+      power: await readPower().catch(() => null),
       kinds: describeKinds(),
       brokers: allBrokers().map((b) => ({
         name: b.name,
