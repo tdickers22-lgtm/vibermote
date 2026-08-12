@@ -11,7 +11,16 @@ import { WebLinksAddon } from '../vendor/addon-web-links.mjs';
 import { wsUrl, wsProtocols, api, ApiError } from './api.js';
 
 const FONT_KEY = 'claude-remote:fontSize';
-const MAX_CACHED = 4;
+
+/**
+ * Terminals kept alive at once, sockets and scrollback included.
+ *
+ * This is the ceiling on how many sessions the user can hold open and switch
+ * between, so the switcher strip caps itself here too — a tab whose terminal
+ * had been evicted would open on a blank screen with no history. Every cached
+ * instance costs an xterm buffer and a websocket, so it is not free.
+ */
+export const MAX_CACHED = 6;
 
 const RECONNECT_BASE = 500;
 const RECONNECT_MAX = 15000;

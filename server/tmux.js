@@ -8,7 +8,9 @@
  *      so every call resolves rather than throwing on ordinary failure.
  */
 import { execFile } from 'node:child_process';
-import { LOCALE, TMUX_BIN, TMUX_PREFIX } from './config.js';
+import fsp from 'node:fs/promises';
+import path from 'node:path';
+import { HOME, LOCALE, TMUX_BIN, TMUX_PREFIX } from './config.js';
 import { log } from './util.js';
 
 const EXEC_TIMEOUT_MS = 5000;
@@ -179,15 +181,32 @@ export async function newSession({ name, cwd, command, env = {} }) {
   if (!res.ok) throw new Error(`tmux new-session failed: ${res.stderr.trim() || `exit ${res.code}`}`);
 
   // Per-session options only — never `-g`, which would rewrite the user's tmux.
-  // The status bar costs a line of vertical space that matters a lot on a phone.
-  await tmux(['set-option', '-t', `=${name}`, 'status', 'off']);
-  // Resize to the smallest *attached* client rather than the largest ever seen,
-  // so a phone attaching alongside a desktop still gets a readable layout.
-  await tmux(['set-option', '-t', `=${name}`, 'aggressive-resize', 'on']);
-  // Long scrollback: the replay on attach is only as good as the history tmux kept.
-  await tmux(['set-option', '-t', `=${name}`, 'history-limit', '20000']);
+  //
+  // The target is `=<name>:` and not `=<name>`. set-option resolves its -t as a
+  // pane target, and a bare `=<name>` is not one: tmux answers "no such
+  // session" and exits 1. Every option below was silently failing that way —
+  // the phone kept a status bar it was supposed to lose and a 2000-line
+  // scrollback where 20000 was intended. The trailing colon makes it a window
+  // target, which resolves, and the `=` still forbids prefix matching so we can
+  // never reconfigure a session we did not name.
+  await setSessionOption(name, 'status', 'off');            // a row of phone screen
+  await setSessionOption(name, 'aggressive-resize', 'on');  // fit the smallest viewer
+  await setSessionOption(name, 'history-limit', '20000');   // the replay is only as good as this
 
   return name;
+}
+
+/**
+ * Set one session-scoped option, reporting failure rather than swallowing it.
+ * These are cosmetic enough that a failure must not abort session creation, and
+ * quiet enough that a failure must not go unrecorded either.
+ */
+async function setSessionOption(name, option, value) {
+  const res = await tmux(['set-option', '-t', `=${name}:`, option, value]);
+  if (!res.ok) {
+    log.warn(`tmux set-option ${option}=${value} failed for ${name}: ${res.stderr.trim() || `exit ${res.code}`}`);
+  }
+  return res.ok;
 }
 
 /**
@@ -222,4 +241,129 @@ export async function killSession(name) {
 export async function serverVersion() {
   const res = await tmux(['-V'], { timeout: 3000 });
   return res.ok ? res.stdout.trim() : null;
+}
+
+/* ------------------------------------------------------------------ *
+ * The prefix key
+ * ------------------------------------------------------------------ */
+
+/**
+ * tmux's own key names, for the handful that are not a single character.
+ * Only the ones a person would plausibly bind as a prefix are here; anything
+ * else (a function key, a mouse binding) is reported as unsynthesisable rather
+ * than guessed at.
+ */
+const NAMED_KEYS = {
+  space: ' ',
+  escape: '\x1b',
+  tab: '\t',
+  enter: '\r',
+  bspace: '\x7f',
+};
+
+/**
+ * Turn a tmux key name ("C-b", "^A", "M-x", "Space") into the bytes that key
+ * produces on a terminal.
+ *
+ * @returns {string|null} null when the key cannot be synthesised (`none`, a
+ * function key, an unknown name) — callers must not silently substitute one.
+ */
+export function keyToSequence(name) {
+  if (typeof name !== 'string') return null;
+  let key = name.trim();
+  if (key.length >= 2 && ((key.startsWith('"') && key.endsWith('"')) || (key.startsWith("'") && key.endsWith("'")))) {
+    key = key.slice(1, -1);
+  }
+  if (!key || /^none$/i.test(key)) return null;
+
+  let ctrl = false;
+  let meta = false;
+
+  // Modifiers stack and may appear in either order: M-C-x is as legal as C-M-x.
+  while (key.length > 2 && key[1] === '-') {
+    const mod = key[0].toUpperCase();
+    if (mod === 'C') ctrl = true;
+    else if (mod === 'M') meta = true;
+    else break;
+    key = key.slice(2);
+  }
+  if (!ctrl && key.length === 2 && key[0] === '^') {
+    ctrl = true;
+    key = key.slice(1);
+  }
+
+  let base = NAMED_KEYS[key.toLowerCase()];
+  if (base === undefined) {
+    if ([...key].length !== 1) return null; // F1, PPage, … — not ours to invent
+    base = key;
+  }
+
+  if (ctrl) {
+    if (base === ' ') base = '\0';
+    else if (base === '?') base = '\x7f';
+    else {
+      const code = base.toUpperCase().charCodeAt(0);
+      // @ A-Z [ \ ] ^ _  ->  0x00-0x1f
+      if (code < 64 || code > 95) return null;
+      base = String.fromCharCode(code - 64);
+    }
+  }
+
+  return meta ? `\x1b${base}` : base;
+}
+
+/** Config files tmux reads by default, in the order it reads them. */
+const CONF_PATHS = [
+  path.join(HOME, '.tmux.conf'),
+  path.join(HOME, '.config', 'tmux', 'tmux.conf'),
+];
+
+/** `set -g prefix C-a`, ignoring comments and never matching `prefix2`. */
+const CONF_PREFIX_RE = /^[ \t]*set(?:-option)?(?:[ \t]+-[a-zA-Z]+)*[ \t]+prefix[ \t]+(\S+)/;
+
+async function prefixFromConf() {
+  for (const file of CONF_PATHS) {
+    let text;
+    try {
+      text = await fsp.readFile(file, 'utf8');
+    } catch {
+      continue;
+    }
+    // Last assignment wins, exactly as it would when tmux sources the file.
+    let found = null;
+    for (const line of text.split('\n')) {
+      const m = CONF_PREFIX_RE.exec(line);
+      if (!m) continue;
+      const seq = keyToSequence(m[1]);
+      if (seq) found = { key: m[1], seq, source: file };
+    }
+    if (found) return found;
+  }
+  return null;
+}
+
+/**
+ * The prefix key as a byte sequence the phone can send.
+ *
+ * The phone's software keyboard has no Ctrl, so the pane-control buttons have
+ * to synthesise `prefix` themselves. Assuming C-b would send the wrong byte to
+ * anyone who remapped it (C-a is the usual remap), and a wrong prefix reads as
+ * "the split buttons do nothing" rather than as a misconfiguration — so the
+ * running tmux server is asked first, its config files are parsed when no
+ * server is up, and tmux's documented default is only the last resort.
+ */
+export async function prefixKey() {
+  const res = await tmux(['show-options', '-g', 'prefix']);
+  if (res.ok) {
+    // "prefix C-b" — the value is everything after the option name.
+    const value = res.stdout.trim().split(/\s+/).slice(1).join(' ');
+    const seq = keyToSequence(value);
+    if (seq) return { key: value, seq, source: 'tmux' };
+    if (value) log.debug(`cannot synthesise tmux prefix "${value}"`);
+  }
+
+  const fromConf = await prefixFromConf();
+  if (fromConf) return fromConf;
+
+  return { key: 'C-b', seq: '\x02', source: 'default' };
 }

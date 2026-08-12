@@ -3,6 +3,84 @@
    ============================================================ */
 
 /* ------------------------------------------------------------
+   Quick shell — a plain terminal is one tap, not a buried preset
+   ------------------------------------------------------------ */
+.quickstart {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 10px;
+}
+
+.qs-go {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--tap);
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  text-align: left;
+  transition: background .1s, border-color .1s, transform .06s;
+}
+.qs-go:active {
+  background: var(--bg-press);
+  border-color: var(--accent);
+  transform: translateY(1px);
+}
+
+.qs-glyph {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: var(--accent-wash);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.qs-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.qs-title { font-size: 13px; font-weight: 600; }
+.qs-dir {
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+}
+
+/* Launching spawns a tmux session and a login shell — brief, but never silent. */
+.qs-go.busy { pointer-events: none; opacity: .6; }
+.qs-go.busy .qs-glyph { animation: blink 1s ease-in-out infinite; }
+
+.qs-pick {
+  flex: 0 0 auto;
+  width: var(--tap);
+  height: var(--tap);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  color: var(--fg-dim);
+}
+.qs-pick:active { background: var(--bg-press); color: var(--fg); }
+
+/* ------------------------------------------------------------
    Filter rail — kind and project cuts, one scrolling row
    ------------------------------------------------------------ */
 .filterbar {

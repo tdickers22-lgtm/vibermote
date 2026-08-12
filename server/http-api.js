@@ -39,7 +39,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { handleAssistantApi } from './assistant.js';
 import { checkAuth } from './auth.js';
-import { PROJECT_ROOT, TMUX_BIN, HARDENED_PATH, SAVED_COMMANDS_PATH } from './config.js';
+import { PROJECT_ROOT, TMUX_BIN, HARDENED_PATH, LOGIN_SHELL, SAVED_COMMANDS_PATH } from './config.js';
 import { listAllSessions, findSession, listProjects, parseId } from './discovery.js';
 import { BARE_LAUNCH_KIND, DEFAULT_KIND, MAX_COMMAND_LENGTH, describeKinds, getKind, kindIds } from './kinds.js';
 import { createSession, killSession, peekBroker, allBrokers } from './sessions.js';
@@ -255,6 +255,28 @@ async function handleApi(req, res, url, pathname, bindInfo) {
       kinds: presets,
       default: DEFAULT_KIND,
       bare: BARE_LAUNCH_KIND,
+    });
+    return;
+  }
+
+  /* -------------------- machine facts -------------------- *
+   * The few things about this Mac the client cannot work out for itself:
+   *
+   *   home    so "just give me a terminal" has a sensible directory without
+   *           the user typing an absolute path on a phone keyboard
+   *   prefix  the user's real tmux prefix, as bytes. The phone's keyboard has
+   *           no Ctrl, so the pane-split buttons synthesise `prefix %` and
+   *           friends themselves — and a hardcoded C-b would be wrong for
+   *           anyone who remapped it. */
+  if (pathname === '/api/env' && method === 'GET') {
+    sendJson(res, 200, {
+      home: os.homedir(),
+      shell: LOGIN_SHELL,
+      tmux: {
+        bin: TMUX_BIN,
+        version: await tmuxApi.serverVersion(),
+        prefix: await tmuxApi.prefixKey(),
+      },
     });
     return;
   }

@@ -10,6 +10,7 @@
 
 import { api, ApiError, clearToken } from '../api.js';
 import { allKinds, getKind, kindsReported, selectableKinds } from '../kinds.js';
+import { defaultCwd, homeDir, rememberCwd } from '../env.js';
 import {
   h, clear, icon, toast, sheet, confirmSheet,
   relativeTime, timestampOf, prettyPath, projectName, sanitizePreview,
@@ -27,6 +28,9 @@ export function createSessionsView({ onOpen }) {
   const btnRefresh = document.getElementById('btn-refresh');
   const btnNew = document.getElementById('btn-new');
   const btnMenu = document.getElementById('btn-menu');
+  const btnShell = document.getElementById('btn-shell');
+  const btnShellDir = document.getElementById('btn-shell-dir');
+  const shellDirLabel = document.getElementById('qs-dir');
 
   let sessions = [];
   let projects = [];      // recent dirs from /api/projects, when available
@@ -38,10 +42,13 @@ export function createSessionsView({ onOpen }) {
   let inFlight = false;
   let pollTimer = 0;
   let visible = false;
+  let shellCwd = '';      // where the one-tap shell will start
+  let startingShell = false;
 
   btnRefresh.append(icon('refresh'));
   btnNew.append(icon('plus'));
   btnMenu.append(icon('more'));
+  btnShellDir.append(icon('folder', 18));
   searchClear.append(icon('x', 16));
 
   /* ------------------------------------------------------------- loading */
@@ -234,6 +241,7 @@ export function createSessionsView({ onOpen }) {
   /* ----------------------------------------------------------- rendering */
 
   function render() {
+    renderQuickstart();
     renderFilters();
     clear(listBody);
 
@@ -379,6 +387,97 @@ export function createSessionsView({ onOpen }) {
     } catch (err) {
       toast(err.message || 'Could not kill session', { error: true });
     }
+  }
+
+  /* ---------------------------------------------------------- quick shell *
+   * "I want to do terminal work on my computer from my phone, fully."
+   *
+   * A plain shell was always supported and always buried: open the sheet, find
+   * the Shell tile among the tool presets, type an absolute path on a phone
+   * keyboard. This is the same launch, one tap, in a directory that is visible
+   * and changeable. The presets keep their place behind the + button. */
+
+  function renderQuickstart() {
+    if (!shellCwd) shellCwd = defaultCwd(sessions.find((s) => s.cwd)?.cwd);
+    shellDirLabel.textContent = prettyPath(shellCwd) || 'home';
+  }
+
+  async function startShell() {
+    if (startingShell) return;
+    startingShell = true;
+    btnShell.classList.add('busy');
+    try {
+      // An empty cwd is not a broken request: the server starts in its own
+      // $HOME, which is exactly the right answer when we never learned one.
+      const cwd = shellCwd || defaultCwd();
+      const { id, session } = await api.createSession({ kind: 'shell', cwd: cwd || undefined });
+      if (cwd) rememberCwd(cwd);
+      await load({ quiet: true });
+      onOpen(sessions.find((s) => s.id === id) || session || {
+        id, kind: 'shell', cwd, live: true,
+      });
+    } catch (err) {
+      toast(err.message || 'Could not start a shell', { error: true });
+    } finally {
+      startingShell = false;
+      btnShell.classList.remove('busy');
+    }
+  }
+
+  function openShellDirSheet() {
+    sheet({
+      title: 'Start shells in',
+      build(body, close) {
+        const input = h('input', {
+          type: 'text',
+          value: shellCwd,
+          placeholder: homeDir() || '/Users/you/project',
+          autocapitalize: 'none',
+          autocorrect: 'off',
+          spellcheck: 'false',
+          enterkeyhint: 'done',
+          'aria-label': 'Working directory for new shells',
+        });
+
+        const pick = (cwd) => {
+          shellCwd = cwd;
+          rememberCwd(cwd);
+          renderQuickstart();
+          close();
+        };
+
+        const apply = () => {
+          const value = input.value.trim();
+          if (!value) { toast('Enter a working directory', { error: true }); return; }
+          pick(value);
+        };
+
+        input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') apply(); });
+
+        body.append(
+          h('div', { class: 'sheet-field' },
+            h('span', { class: 'field-label' }, 'Directory'),
+            input,
+          ),
+          h('button', { class: 'btn btn-primary', style: { marginBottom: '14px' }, onClick: apply },
+            'Use this directory'),
+        );
+
+        const home = homeDir();
+        if (home) {
+          body.append(pickerRow('Home', prettyPath(home), shellCwd === home, () => pick(home)));
+        }
+        for (const cwd of recentCwds()) {
+          if (cwd === home) continue;
+          body.append(pickerRow(
+            cwd.split('/').filter(Boolean).pop() || cwd,
+            prettyPath(cwd),
+            shellCwd === cwd,
+            () => pick(cwd),
+          ));
+        }
+      },
+    });
   }
 
   /** Directories worth offering, most-recent first: live sessions then history. */
@@ -850,6 +949,8 @@ export function createSessionsView({ onOpen }) {
   btnRefresh.addEventListener('click', () => load());
   btnNew.addEventListener('click', () => openNewSheet());
   btnMenu.addEventListener('click', openMenu);
+  btnShell.addEventListener('click', startShell);
+  btnShellDir.addEventListener('click', openShellDirSheet);
 
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden && visible) load({ quiet: true });
@@ -860,6 +961,7 @@ export function createSessionsView({ onOpen }) {
   return {
     show() {
       visible = true;
+      renderQuickstart();
       render();
       load({ quiet: loadedOnce });
       loadProjects();
@@ -873,6 +975,19 @@ export function createSessionsView({ onOpen }) {
     markGone(id) {
       sessions = sessions.filter((s) => s.id !== id);
       if (visible) render();
+    },
+    /**
+     * A dormant row became a running session. Swap it for the live one straight
+     * away rather than waiting for the next poll: the row the user just tapped
+     * would otherwise still sit under "Resumable", which is now a lie, and
+     * tapping it again would look like the right way to get back to it.
+     */
+    markResumed(dormantId, live) {
+      if (!live?.id) return;
+      sessions = sessions.filter((s) => s.id !== dormantId && s.id !== live.id);
+      sessions.unshift({ ...live, live: true });
+      if (visible) render();
+      load({ quiet: true });
     },
   };
 }

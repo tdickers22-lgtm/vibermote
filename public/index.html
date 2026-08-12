@@ -10,13 +10,13 @@
                                    16px font-size on every focusable input
 -->
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
-<title>Termlink</title>
+<title>Vibermote</title>
 <meta name="description" content="Every terminal session on your Mac, from your phone.">
 <meta name="theme-color" content="#141413">
 <meta name="color-scheme" content="dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Termlink">
+<meta name="apple-mobile-web-app-title" content="Vibermote">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="./manifest.json">
@@ -40,7 +40,7 @@
     <div class="token-wrap">
       <div class="token-card">
         <img class="token-logo" src="./icons/icon-192.png" alt="" width="64" height="64">
-        <h1 class="token-title">Termlink</h1>
+        <h1 class="token-title">Vibermote</h1>
         <p class="token-sub">Every terminal session on your Mac, from your phone. Paste the access token the server printed.</p>
         <form id="token-form" autocomplete="off">
           <label class="field">
@@ -80,6 +80,20 @@
           <button class="search-clear" id="search-clear" aria-label="Clear search" hidden></button>
         </div>
         <div class="filterbar scroll-x" id="filterbar"></div>
+        <!-- Plain terminal work is the point of the product, not a fallback:
+             one tap starts a login shell in the directory shown. The preset
+             tiles live behind the + button for when a tool is wanted. -->
+        <div class="quickstart" id="quickstart">
+          <button class="qs-go" id="btn-shell" type="button">
+            <span class="qs-glyph">&#10095;</span>
+            <span class="qs-text">
+              <span class="qs-title">New shell</span>
+              <span class="qs-dir" id="qs-dir">~</span>
+            </span>
+          </button>
+          <button class="qs-pick" id="btn-shell-dir" type="button"
+                  aria-label="Choose the shell's working directory"></button>
+        </div>
       </header>
       <div class="list-scroll scrollable" id="list-scroll">
         <div id="list-body"></div>
@@ -150,9 +164,24 @@
       </div>
     </header>
 
+    <!-- Open terminals, so switching between them is one tap instead of a
+         round trip through the list. Hidden while only one is open. -->
+    <div class="term-tabs scroll-x" id="term-tabs" aria-label="Open terminals" hidden></div>
+
     <div class="term-stage" id="term-stage">
       <div class="term-mount" id="term-mount"></div>
       <button class="jump-bottom" id="jump-bottom" hidden>Jump to latest</button>
+
+      <!-- Covers the mount while a dormant session is being resumed: spawning
+           a CLI takes a moment and a blank black rectangle reads as a crash. -->
+      <div class="term-busy" id="term-busy" hidden>
+        <div class="term-busy-card">
+          <span class="term-busy-spin" id="term-busy-spin"></span>
+          <p class="term-busy-title" id="term-busy-title"></p>
+          <p class="term-busy-desc" id="term-busy-desc"></p>
+          <div class="term-busy-actions" id="term-busy-actions"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Mobile keyboard bar: the make-or-break surface. Built in keybar.js -->
@@ -165,7 +194,7 @@
 <div class="sheet-host" id="sheet-host"></div>
 
 <noscript>
-  <p style="color:#f0eee6;font-family:monospace;padding:24px">Termlink needs JavaScript.</p>
+  <p style="color:#f0eee6;font-family:monospace;padding:24px">Vibermote needs JavaScript.</p>
 </noscript>
 
 <script type="module" src="./js/main.js"></script>

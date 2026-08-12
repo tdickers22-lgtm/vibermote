@@ -10,10 +10,14 @@
  * the terminal's textarea — otherwise the soft keyboard would close on each tap.
  */
 
-import { h, icon, sheet, toast } from './ui.js';
+import { h, clear, icon, sheet } from './ui.js';
 import { getKind } from './kinds.js';
+import { tmuxPrefix, tmuxPrefixName } from './env.js';
 
 const ESC = '\x1b';
+
+/** How long the y/n answer strip stays up before the pane keys come back. */
+const CONFIRM_TIMEOUT_MS = 15000;
 
 /** ctrl state: 0 = off, 1 = armed for one key, 2 = locked */
 const OFF = 0, ARMED = 1, LOCKED = 2;
@@ -247,6 +251,106 @@ export function createKeybar(host, ctx) {
     });
   }
 
+  /* ---------------------------------------------------------- tmux panes */
+
+  /**
+   * Real tmux splits, driven from the phone.
+   *
+   * The user is attached to an actual tmux session, so tmux's own panes already
+   * render correctly here — the only thing missing was a way to press the
+   * prefix, which no software keyboard has. These keys send `prefix` followed
+   * by the binding, exactly as typing it would. The prefix comes from the
+   * server (`/api/env`), which reads it out of the running tmux rather than
+   * assuming C-b.
+   *
+   * The row is collapsible: Esc, Tab, Ctrl, the arrows and Ctrl+C are what
+   * drive Claude Code all day and none of them may lose their place to this.
+   */
+  let paneRow = null;
+  let paneOpen = false;
+  let paneKeyEl = null;
+  let paneConfirm = null;
+  let confirmTimer = 0;
+
+  /** Send the user's real prefix, then the binding it introduces. */
+  function tmuxKey(binding) {
+    ctx.send(`${tmuxPrefix()}${binding}`);
+  }
+
+  /**
+   * `prefix x` asks "kill-pane 0? (y/n)" and waits for a single keypress. On a
+   * phone the keyboard may not even be up, so the row turns into the answer.
+   */
+  function askPane(prompt, binding) {
+    tmuxKey(binding);
+    paneConfirm = { prompt };
+    clearTimeout(confirmTimer);
+    // Timing out must ANSWER the prompt, not just hide the strip. tmux waits
+    // for its keypress forever, and a prompt still pending after the strip is
+    // gone eats the next prefix the user sends — so the following tap silently
+    // does nothing and types a stray letter into the pane instead.
+    confirmTimer = setTimeout(() => answerPane('n'), CONFIRM_TIMEOUT_MS);
+    renderPaneRow();
+  }
+
+  function answerPane(ch) {
+    ctx.send(ch);
+    clearTimeout(confirmTimer);
+    paneConfirm = null;
+    renderPaneRow();
+  }
+
+  function renderPaneRow() {
+    if (!paneRow) return;
+    clear(paneRow);
+
+    if (paneConfirm) {
+      paneRow.append(
+        h('span', { class: 'key key-note' }, paneConfirm.prompt),
+        key('y', () => answerPane('y'), { class: 'key-wide', aria: 'Answer yes' }),
+        key('n', () => answerPane('n'), { class: 'key-wide', aria: 'Answer no' }),
+      );
+      return;
+    }
+
+    paneRow.append(
+      // `%` splits left/right, `"` splits top/bottom — tmux's own bindings.
+      key(icon('splitV', 17), () => tmuxKey('%'), { aria: 'Split pane left and right' }),
+      key(icon('splitH', 17), () => tmuxKey('"'), { aria: 'Split pane top and bottom' }),
+      key(icon('arrowLeft', 17), () => tmuxKey(`${ESC}[D`), { aria: 'Pane to the left' }),
+      key(icon('arrowDown', 17), () => tmuxKey(`${ESC}[B`), { aria: 'Pane below' }),
+      key(icon('arrowUp', 17), () => tmuxKey(`${ESC}[A`), { aria: 'Pane above' }),
+      key(icon('arrowRight', 17), () => tmuxKey(`${ESC}[C`), { aria: 'Pane to the right' }),
+      key(icon('zoom', 17), () => tmuxKey('z'), { aria: 'Zoom this pane full screen' }),
+      key(icon('x', 17), () => askPane('kill pane?', 'x'),
+        { class: 'key-danger', aria: 'Close this pane' }),
+    );
+  }
+
+  function togglePanes() {
+    paneOpen = !paneOpen;
+    clearTimeout(confirmTimer);
+    paneConfirm = null;
+
+    if (paneOpen) {
+      // First in the bar, so the two rows the user's fingers already know do
+      // not move when it opens.
+      host.prepend(paneRow);
+      renderPaneRow();
+    } else {
+      paneRow.remove();
+    }
+
+    paneKeyEl?.classList.toggle('toggled', paneOpen);
+    paneKeyEl?.setAttribute('aria-pressed', paneOpen ? 'true' : 'false');
+    paneKeyEl?.setAttribute(
+      'aria-label',
+      `${paneOpen ? 'Hide' : 'Show'} tmux pane controls (prefix ${tmuxPrefixName()})`,
+    );
+    // The bar just changed height, which changes the PTY's row count.
+    ctx.onLayout?.();
+  }
+
   /* ------------------------------------------------------------- keyboard */
 
   function toggleKeyboard() {
@@ -263,12 +367,18 @@ export function createKeybar(host, ctx) {
   /* ----------------------------------------------------------------- build */
 
   paletteKeyEl = key('/ cmds', openPalette, { class: 'key-wide', aria: 'Command palette' });
+  paneKeyEl = key(icon('panes', 17), togglePanes, {
+    aria: `Show tmux pane controls (prefix ${tmuxPrefixName()})`,
+  });
+  paneKeyEl.setAttribute('aria-pressed', 'false');
+  paneRow = h('div', { class: 'keyrow keyrow-panes' });
 
   const quickRow = h('div', { class: 'keyrow' },
     paletteKeyEl,
     key('^C', () => { ctx.send('\x03'); setCtrl(OFF); },
       { class: 'key-wide key-danger', aria: 'Ctrl+C interrupt' }),
     key('⇧⇥', () => ctx.send(`${ESC}[Z`), { aria: 'Shift Tab' }),
+    paneKeyEl,
     key(icon('clipboard', 17), doPaste, { aria: 'Paste' }),
     key(icon('keyboard', 17), toggleKeyboard, { aria: 'Toggle keyboard' }),
   );

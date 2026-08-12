@@ -212,6 +212,20 @@ export const api = {
   },
 
   /**
+   * `GET /api/env` — this Mac's home directory and tmux prefix. Optional: a
+   * server without it leaves the client on its documented defaults rather than
+   * failing, so `null` is a valid answer and not an error.
+   */
+  async env() {
+    try {
+      return await request('/api/env', { timeout: 8000 });
+    } catch (err) {
+      if (err instanceof ApiError && err.isMissingEndpoint) return null;
+      throw err;
+    }
+  },
+
+  /**
    * Recently used project directories. Optional endpoint — an absent one just
    * means the directory picker falls back to dirs mined from the session list.
    */

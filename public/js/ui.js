@@ -87,6 +87,17 @@ const ICONS = {
     '<path d="M11 3.5 12.6 8 17 9.6 12.6 11.2 11 15.7 9.4 11.2 5 9.6 9.4 8Z"/>' +
     '<path d="M17.5 14.5 18.4 17 21 17.9 18.4 18.8 17.5 21.3 16.6 18.8 14 17.9 16.6 17Z"/>',
   play: '<polygon points="7,4.5 19,12 7,19.5"/>',
+  folder: '<path d="M3 7.5a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
+  // tmux pane controls. splitV/splitH show the divider the binding creates:
+  // `%` puts panes side by side, `"` stacks them.
+  splitV: '<rect x="3" y="4.5" width="18" height="15" rx="2.5"/><line x1="12" y1="4.5" x2="12" y2="19.5"/>',
+  splitH: '<rect x="3" y="4.5" width="18" height="15" rx="2.5"/><line x1="3" y1="12" x2="21" y2="12"/>',
+  panes:
+    '<rect x="3" y="4.5" width="18" height="15" rx="2.5"/>' +
+    '<line x1="12" y1="4.5" x2="12" y2="19.5"/><line x1="12" y1="12" x2="21" y2="12"/>',
+  zoom:
+    '<polyline points="9.5 3.5 3.5 3.5 3.5 9.5"/><polyline points="14.5 3.5 20.5 3.5 20.5 9.5"/>' +
+    '<polyline points="14.5 20.5 20.5 20.5 20.5 14.5"/><polyline points="9.5 20.5 3.5 20.5 3.5 14.5"/>',
 };
 
 export function icon(name, size = 21) {

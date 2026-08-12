@@ -1,10 +1,10 @@
 {
-  "name": "Termlink",
-  "short_name": "Termlink",
+  "name": "Vibermote",
+  "short_name": "Vibermote",
   "description": "Every terminal session on your Mac, driven from your phone.",
   "start_url": "./",
   "scope": "./",
-  "id": "termlink",
+  "id": "vibermote",
   "display": "standalone",
   "display_override": ["fullscreen", "standalone", "minimal-ui"],
   "orientation": "any",
