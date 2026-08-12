@@ -2,6 +2,11 @@ node_modules/
 .token
 .sessions.json
 .usage-cache.json
+# The real saved-commands store, per server/config.js SAVED_COMMANDS_PATH. Every
+# string in it is a command line this server executes, so it must never be
+# committed. The .tmp form is the atomic-write file a crash mid-write leaves behind.
+.commands.json
+.commands.json.*.tmp
 saved-commands.json
 logs/
 *.log
