@@ -174,14 +174,21 @@ export const KINDS = {
     icon: '▲',
     glyph: 'CU',
     color: '#8b5cf6',
-    launchArgv: ({ args }) => argList(args),
+    // --force is Cursor's --dangerously-skip-permissions ("Force allow commands
+    // unless explicitly denied"); --trust skips the per-directory trust gate that
+    // otherwise stops the first run in any new project. Both are deliberate: an
+    // approval prompt you cannot see is a hang from the phone's point of view.
+    // NOTE the config-file route does not work — approvalMode has no permissive
+    // value ("runEverything" was tried and commands were still rejected), so the
+    // flags are the only mechanism.
+    launchArgv: ({ args }) => ['--force', '--trust', ...argList(args)],
     // `--resume [chatId]` takes an OPTIONAL id: with one it reopens that chat,
     // without one the CLI shows its own picker. Both are useful from a phone, so
     // an absent sessionId is passed through rather than treated as an error.
     resumeArgv: ({ sessionId, args }) => (
       sessionId
-        ? ['--resume', sessionId, ...argList(args)]
-        : ['--resume', ...argList(args)]
+        ? ['--force', '--trust', '--resume', sessionId, ...argList(args)]
+        : ['--force', '--trust', '--resume', ...argList(args)]
     ),
     isResumeId: (id) => SAFE_ID.test(id),
     refFor: (entry) => entry.sessionId,
