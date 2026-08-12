@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.tobias.claude-remote — keeps the phone remote's server running.
+
+  Install:
+      cp /Users/tobiasdicker/claude-remote/com.tobias.claude-remote.plist \
+         ~/Library/LaunchAgents/com.tobias.claude-remote.plist
+      launchctl load -w ~/Library/LaunchAgents/com.tobias.claude-remote.plist
+
+  Disable:
+      launchctl unload -w ~/Library/LaunchAgents/com.tobias.claude-remote.plist
+
+  IMPORTANT — the -w matters on both sides. A plain `launchctl unload` stops the
+  job for this boot only; the agent is re-registered at the next login and the
+  server comes back, which looks like the unload silently failed. `unload -w`
+  writes the disabled flag into the per-user override database, and that is what
+  actually persists. Same for `load -w`, which clears a previous disable.
+
+  Restart after a config or token change:
+      launchctl kickstart -k gui/$(id -u)/com.tobias.claude-remote
+
+  Note that ProgramArguments points at scripts/start-server.sh rather than at
+  node directly. launchd runs jobs with PATH=/usr/bin:/bin:/usr/sbin:/sbin and
+  without your shell profile, so node (nvm), tmux (Homebrew) and claude
+  (~/.local/bin) are all invisible to it. The wrapper rebuilds a usable PATH,
+  sets a UTF-8 locale for the TUI, resolves the bind address, and then execs
+  node — so launchd still supervises the real server process.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tobias.claude-remote</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/tobiasdicker/claude-remote/scripts/start-server.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/tobiasdicker/claude-remote</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Restart the server whenever it exits, crash or clean. -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- If it dies immediately on startup, do not spin: launchd waits this
+         many seconds between respawns. 10s is the default; stated explicitly
+         so a crash loop is throttled visibly rather than by accident. -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <!-- Interactive keeps the process out of the low-priority background QoS
+         tier. This job is pumping keystrokes and terminal output to a phone in
+         real time; being scheduled as batch work makes it feel laggy. -->
+    <key>ProcessType</key>
+    <string>Interactive</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/tobiasdicker</string>
+
+        <!-- start-server.sh rebuilds PATH itself; this is a sane floor so the
+             wrapper's own lookups (uname, stat, openssl) resolve. -->
+        <key>PATH</key>
+        <string>/Users/tobiasdicker/.local/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+
+        <!-- The Claude Code TUI draws with box-drawing characters. Without a
+             UTF-8 locale the PTY mangles them and the phone shows mojibake. -->
+        <key>LANG</key>
+        <string>en_US.UTF-8</string>
+        <key>LC_ALL</key>
+        <string>en_US.UTF-8</string>
+        <key>TERM</key>
+        <string>xterm-256color</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/tobiasdicker/claude-remote/logs/server.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/tobiasdicker/claude-remote/logs/server.err.log</string>
+</dict>
+</plist>

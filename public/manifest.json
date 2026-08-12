@@ -1,0 +1,20 @@
+{
+  "name": "Termlink",
+  "short_name": "Termlink",
+  "description": "Every terminal session on your Mac, driven from your phone.",
+  "start_url": "./",
+  "scope": "./",
+  "id": "termlink",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#141413",
+  "theme_color": "#141413",
+  "categories": ["developer", "productivity", "utilities"],
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "./icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

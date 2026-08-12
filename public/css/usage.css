@@ -1,0 +1,350 @@
+/* ============================================================
+   Termlink — token usage view.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   Bucket colours.
+
+   The four token buckets are priced an order of magnitude apart
+   and must never be shown as one number, so each keeps a fixed
+   colour everywhere it appears — hero tile, split bar, legend.
+   Learn the colour once, read it anywhere.
+   ------------------------------------------------------------ */
+:root {
+  --tok-in: #d97757;  /* input        — the app accent */
+  --tok-out: #4fa87f; /* output       — the "live" green */
+  --tok-cr: #6c7ce0;  /* cache read   — cheap and enormous */
+  --tok-cw: #c9a227;  /* cache write  — the command gold */
+}
+
+.tok-in  { --k: var(--tok-in); }
+.tok-out { --k: var(--tok-out); }
+.tok-cr  { --k: var(--tok-cr); }
+.tok-cw  { --k: var(--tok-cw); }
+
+.usplit-seg.tok-in, .usplit-seg.tok-out,
+.usplit-seg.tok-cr, .usplit-seg.tok-cw { background: var(--k); }
+
+/* ------------------------------------------------------------
+   Window selector
+   ------------------------------------------------------------ */
+.segbar {
+  display: flex;
+  gap: 4px;
+  padding: 0 12px 10px;
+}
+
+.seg {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--bg-elev);
+  color: var(--fg-mute);
+  font-size: 12px;
+  font-weight: 600;
+  transition: background .1s, color .1s, border-color .1s;
+}
+/* Extend the tap target above and below the 34px paint. */
+.seg { position: relative; }
+.seg::before { content: ""; position: absolute; inset: -5px 0; }
+
+.seg:active { background: var(--bg-press); }
+.seg.on {
+  background: var(--accent-wash);
+  border-color: var(--accent);
+  color: var(--fg);
+}
+
+/* ------------------------------------------------------------
+   Scroll body
+   ------------------------------------------------------------ */
+.usage-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 14px 16px 32px;
+  padding-left: calc(16px + var(--safe-left));
+  padding-right: calc(16px + var(--safe-right));
+}
+
+/* ------------------------------------------------------------
+   Headline figures
+   ------------------------------------------------------------ */
+.usage-hero {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.umetric {
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  min-width: 0;
+}
+
+.umetric-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  margin-bottom: 5px;
+}
+
+.umetric-value {
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.umetric-sub {
+  margin-top: 3px;
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+.umetric.wide { grid-column: 1 / -1; }
+.umetric.accent .umetric-value { color: var(--accent); }
+
+/* ------------------------------------------------------------
+   Breakdown cards
+   ------------------------------------------------------------ */
+.ucard {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  padding: 13px 14px;
+  margin-bottom: 12px;
+}
+
+.ucard-title {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  margin: 0 0 11px;
+}
+
+.urow { margin-bottom: 12px; }
+.urow:last-child { margin-bottom: 0; }
+
+.urow-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.urow-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.urow-val {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--fg-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.urow-sub {
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Proportional bar. Width is set inline as a percentage. */
+.ubar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-press);
+  overflow: hidden;
+}
+.ubar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--k, var(--accent));
+  min-width: 2px;
+  transition: width .25s ease;
+}
+
+/* ------------------------------------------------------------
+   Token split (input / output / cache)
+   ------------------------------------------------------------ */
+.usplit {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-press);
+  margin-bottom: 10px;
+}
+.usplit-seg { height: 100%; min-width: 0; }
+
+.ulegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.ulegend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--fg-dim);
+}
+.ulegend-dot {
+  width: 8px; height: 8px;
+  border-radius: 2px;
+  background: var(--k, var(--accent));
+  flex: 0 0 auto;
+}
+.ulegend-n {
+  color: var(--fg-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The exact counts are the point of the legend, so they get their own line
+   rather than being squeezed onto one with the label. */
+.ulegend-item {
+  flex: 1 1 calc(50% - 12px);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.ulegend-n { flex-basis: 100%; padding-left: 14px; }
+.codex-legend .ulegend-n { padding-left: 0; }
+
+/* A hero tile carrying a bucket colour gets a hairline in that colour, so the
+   tile and its segment in the split bar are recognisably the same thing. */
+.umetric.tok-in, .umetric.tok-out,
+.umetric.tok-cr, .umetric.tok-cw { border-left: 2px solid var(--k); }
+
+/* ------------------------------------------------------------
+   Notes — every one of these exists to stop a number being read
+   as more certain than it is.
+   ------------------------------------------------------------ */
+.unote {
+  margin: 10px 0 0;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--fg-mute);
+}
+.unote.wide { grid-column: 1 / -1; margin-top: 0; }
+.unote-head { color: var(--fg-dim); }
+.unote-thin { font-size: 10px; opacity: .85; }
+.unote-warn { color: var(--accent); }
+
+.urow-val.unavailable {
+  color: var(--fg-mute);
+  font-style: italic;
+}
+
+/* A section heading inside a card or the hero grid. */
+.ugroup-label {
+  margin: 6px 0 0;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+.ucard .ugroup-label { margin: 16px 0 10px; }
+
+/* Reasoning tokens are a SUBSET of output. The indent and the rule are there so
+   the figure cannot be read as another quantity to add on. */
+.unote-nested {
+  margin-left: 10px;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+}
+
+/* ------------------------------------------------------------
+   Placeholder pricing.
+
+   Codex rates are admitted guesses. They must never look as
+   settled as the Claude estimate, so they are dimmed and
+   hatched rather than rendered in the confident accent.
+   ------------------------------------------------------------ */
+.umetric.placeholder { border-style: dashed; }
+.umetric.placeholder .umetric-value { color: var(--fg-dim); }
+.umetric.placeholder .umetric-label::after {
+  content: " ≈";
+  color: var(--fg-mute);
+}
+.urow-val.placeholder { color: var(--fg-dim); }
+.urow-val.placeholder::before {
+  content: "≈";
+  margin-right: 2px;
+  color: var(--fg-mute);
+}
+
+.ucard-quiet { background: transparent; }
+
+/* Inline text button — "show all projects", "view the rate table". */
+.ulink {
+  margin-top: 10px;
+  min-height: 32px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+.ulink:active { color: var(--accent-deep); }
+
+/* ------------------------------------------------------------
+   Rate table (in a sheet)
+   ------------------------------------------------------------ */
+.ptable {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(4, auto);
+  gap: 6px 10px;
+  align-items: baseline;
+  margin: 4px 0 14px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.ptable-h {
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.ptable .num { text-align: right; color: var(--fg-dim); }
+.ptable-model {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg);
+}
+
+.ptable-codex { grid-template-columns: minmax(0, 1fr) repeat(3, auto); }
+
+.sheet-subtitle {
+  margin: 20px 0 6px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.sheet-note.warn { color: var(--accent); }

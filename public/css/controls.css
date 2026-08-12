@@ -1,0 +1,138 @@
+/* ============================================================
+   Termlink — interactive primitives: buttons, fields, chips, steppers.
+   Everything here is reused across views; view-specific controls live
+   in that view's sheet.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   Buttons
+   ------------------------------------------------------------ */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 48px;
+  border-radius: var(--radius);
+  background: var(--bg-elev-2);
+  border: 1px solid var(--line);
+  color: var(--fg);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  transition: background .1s, transform .06s;
+}
+.btn:active { transform: translateY(1px); background: var(--bg-press); }
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.btn-primary:active { background: var(--accent-deep); border-color: var(--accent-deep); }
+.btn-danger { color: var(--danger); border-color: #4a2b25; }
+.btn-danger:active { background: #2e1b17; }
+.btn[disabled] { opacity: .5; pointer-events: none; }
+
+/* ------------------------------------------------------------
+   Fields
+   ------------------------------------------------------------ */
+.field { display: block; text-align: left; margin-bottom: 14px; }
+.field-label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  margin-bottom: 7px;
+}
+.field-row {
+  display: flex;
+  align-items: center;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.field-row:focus-within { border-color: var(--accent-deep); }
+.field-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 48px;
+  padding: 0 14px;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+.reveal {
+  flex: 0 0 auto;
+  height: 48px;
+  padding: 0 14px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+.reveal:active { color: var(--accent); }
+
+/* Standalone text input used outside .field-row (sheets, launcher). */
+.text-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  outline: none;
+  font-size: 16px;
+  color: var(--fg);
+}
+.text-input:focus { border-color: var(--accent-deep); }
+.text-input::placeholder { color: var(--fg-mute); }
+
+/* ------------------------------------------------------------
+   Chips
+   ------------------------------------------------------------ */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip {
+  max-width: 100%;
+  min-height: 36px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+  font-size: 11.5px;
+  color: var(--fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip:active { background: var(--accent-wash); border-color: var(--accent); color: var(--accent); }
+
+/* ------------------------------------------------------------
+   Stepper (text size)
+   ------------------------------------------------------------ */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.stepper button {
+  width: var(--tap); height: var(--tap);
+  display: grid; place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--fg);
+}
+.stepper button:active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.stepper-val {
+  min-width: 44px;
+  text-align: center;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-dim);
+}

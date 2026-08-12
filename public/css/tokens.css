@@ -1,0 +1,165 @@
+/* ============================================================
+   Termlink — design tokens, reset, and the app frame.
+   Dark, monospace, phone-first. Loaded before every other sheet.
+   ============================================================ */
+
+:root {
+  --bg:        #141413;
+  --bg-elev:   #1c1b19;
+  --bg-elev-2: #232220;
+  --bg-press:  #2b2926;
+  --line:      #34312c;
+  --line-soft: #262421;
+
+  --fg:        #f0eee6;
+  --fg-dim:    #a8a396;
+  --fg-mute:   #6f6b60;
+
+  --accent:      #d97757;
+  --accent-deep: #b85c3e;
+  --accent-wash: #3a241b;
+  --on-accent:   #1a0f0a;
+
+  --live:   #4fa87f;
+  --danger: #e0654f;
+
+  /* Per-kind accent. Set inline on any element that represents a session kind;
+     defaults to the app accent so an unstyled element still looks deliberate. */
+  --k: var(--accent);
+
+  --radius:    12px;
+  --radius-sm: 9px;
+
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
+
+  /* When the software keyboard is up there is no home indicator to avoid,
+     so the keybar drops its bottom inset. Toggled by viewport.js. */
+  --kb-safe: var(--safe-bottom);
+
+  /* Minimum comfortable tap target. Nothing interactive may be smaller. */
+  --tap: 44px;
+
+  color-scheme: dark;
+}
+
+html.kb-open { --kb-safe: 0px; }
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: var(--bg);
+}
+
+body {
+  font-family: var(--font-mono);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The app box is pinned to the *visual* viewport by viewport.js so the iOS
+   keyboard never hides the prompt. Height/transform are set inline there. */
+#app {
+  position: fixed;
+  inset: 0 0 auto 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  will-change: height, transform;
+}
+
+.view {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.view[hidden] { display: none; }
+
+/* The tabbed shell wraps the three primary views and the tab bar. */
+.shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.shell[hidden] { display: none; }
+
+button, input, select, textarea {
+  font-family: inherit;
+  color: inherit;
+}
+button {
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+button[disabled] { cursor: default; }
+
+/* 16px minimum stops iOS Safari zooming the page on focus. */
+input, textarea { font-size: 16px; }
+
+.scrollable {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Horizontal chip rails: scroll rather than wrap, and hide the bar. */
+.scroll-x {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.scroll-x::-webkit-scrollbar { height: 0; width: 0; }
+
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------
+   Shared keyframes
+   ------------------------------------------------------------ */
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes blink { 50% { opacity: .25; } }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(79,168,127,.5); }
+  70%  { box-shadow: 0 0 0 7px rgba(79,168,127,0); }
+  100% { box-shadow: 0 0 0 0 rgba(79,168,127,0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}

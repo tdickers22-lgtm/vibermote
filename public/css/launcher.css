@@ -1,0 +1,406 @@
+/* ============================================================
+   Termlink — the launcher: pick a kind, a directory, and optionally
+   a prior session to resume.
+   ============================================================ */
+
+.launch-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 16px 16px 32px;
+  padding-left: calc(16px + var(--safe-left));
+  padding-right: calc(16px + var(--safe-right));
+}
+
+.launch-section { margin-bottom: 22px; }
+
+.launch-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.launch-head .field-label { margin-bottom: 0; }
+.launch-head-note {
+  font-size: 11px;
+  color: var(--fg-mute);
+}
+
+/* ------------------------------------------------------------
+   Command field — the headline control of the new-session sheet.
+
+   Gold is the `custom` kind's colour, the same one the session list uses for
+   a Command badge, so the field and the row it will produce read as the same
+   thing. It leads the sheet because "run anything" is the product; the preset
+   tiles further down are shortcuts, not the boundary.
+   ------------------------------------------------------------ */
+.cmd-field { --cmd: #c9a227; }
+
+/* The saved-command and resume slots are placeholders the sheet fills in later;
+   an empty one must not leave a 14px gap where nothing is. */
+.sheet-field:empty { margin-bottom: 0; }
+
+.cmd-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+/* Overrides `.sheet-field input { width: 100% }` — inside a flex row the input
+   must be free to shrink, or the Run button is pushed off the screen. */
+.sheet-field .cmd-input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  border-color: var(--cmd);
+  background: var(--bg);
+  letter-spacing: 0.01em;
+}
+.sheet-field .cmd-input:focus {
+  border-color: var(--cmd);
+  box-shadow: 0 0 0 1px var(--cmd);
+}
+.cmd-input::placeholder { color: var(--fg-mute); }
+
+.cmd-go {
+  flex: 0 0 auto;
+  min-width: 64px;
+  height: 48px;
+  padding: 0 16px;
+  border-radius: var(--radius);
+  background: var(--cmd);
+  border: 1px solid var(--cmd);
+  color: #1a1503;
+  font-size: 14px;
+  font-weight: 700;
+  transition: transform .06s, opacity .1s;
+}
+.cmd-go:active { transform: translateY(1px); }
+.cmd-go[disabled] { opacity: .55; pointer-events: none; }
+
+.cmd-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cmd-save {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  background: none;
+  font-size: 11.5px;
+  color: var(--fg-dim);
+}
+.cmd-save:active { border-style: solid; border-color: var(--cmd); color: var(--cmd); }
+
+/* ------------------------------------------------------------
+   Saved commands — the user's own one-tap launches
+   ------------------------------------------------------------ */
+.saved-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.saved-opt {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.saved-run {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border: 1px solid var(--line-soft);
+  border-left: 3px solid #c9a227;
+  border-radius: 10px;
+  background: var(--bg-elev);
+  text-align: left;
+  transition: background .1s, border-color .1s;
+}
+.saved-run:active { background: var(--bg-press); }
+
+.saved-name {
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.saved-cmd {
+  font-size: 11px;
+  color: var(--fg-dim);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* When the name is the command there is only one line, so it takes the weight. */
+.saved-cmd.lead { font-size: 13px; font-weight: 600; color: var(--fg); }
+.saved-dir {
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-del {
+  flex: 0 0 auto;
+  width: var(--tap);
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  color: var(--fg-mute);
+  background: var(--bg-elev);
+}
+.saved-del:active { color: var(--danger); border-color: var(--danger); }
+
+/* Read-only echo of the command being saved. */
+.saved-preview {
+  margin: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg);
+  font-size: 13px;
+  line-height: 1.45;
+  color: #c9a227;
+  overflow-wrap: anywhere;
+}
+
+/* Pin-to-directory toggle in the save sheet. */
+.pin-opt {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 9px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: var(--bg-elev);
+  text-align: left;
+}
+.pin-opt.on { border-color: var(--accent); background: var(--accent-wash); }
+.pin-box {
+  flex: 0 0 auto;
+  width: 20px; height: 20px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--accent);
+}
+.pin-opt.on .pin-box { border-color: var(--accent); }
+.pin-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pin-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pin-desc { font-size: 10.5px; color: var(--fg-mute); }
+
+/* ------------------------------------------------------------
+   Kind picker
+   ------------------------------------------------------------ */
+.kind-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.kind-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  min-height: 62px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  text-align: left;
+  transition: background .1s, border-color .1s;
+}
+.kind-opt:active { background: var(--bg-press); }
+
+.kind-opt.on {
+  border-color: var(--k, var(--accent));
+  background: color-mix(in srgb, var(--k, var(--accent)) 12%, var(--bg-elev));
+}
+@supports not (background: color-mix(in srgb, red 10%, transparent)) {
+  .kind-opt.on { background: var(--bg-elev-2); }
+}
+
+.kind-opt-top {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+}
+
+.kind-opt-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--k, var(--accent));
+  flex: 0 0 auto;
+}
+
+.kind-opt-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kind-opt-note {
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  letter-spacing: 0.03em;
+}
+
+/* Unavailable: the server told us the binary is not installed. Kept visible
+   and readable — greyed, not hidden — so the absence is explained. */
+.kind-opt.off {
+  opacity: .42;
+  pointer-events: none;
+}
+.kind-opt.off .kind-opt-note { color: var(--danger); }
+
+.kind-note {
+  padding: 8px 2px 0;
+  grid-column: 1 / -1;
+}
+
+/* ------------------------------------------------------------
+   Directory picker
+   ------------------------------------------------------------ */
+.dir-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.dir-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: var(--bg-elev);
+  text-align: left;
+  transition: background .1s, border-color .1s;
+}
+.dir-opt:active { background: var(--bg-press); }
+.dir-opt.on { border-color: var(--accent); background: var(--accent-wash); }
+
+.dir-opt-main { flex: 1 1 auto; min-width: 0; }
+.dir-opt-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dir-opt-path {
+  margin-top: 2px;
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+}
+.dir-opt-n {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------
+   Resume picker
+   ------------------------------------------------------------ */
+.resume-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.resume-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 9px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: var(--bg-elev);
+  text-align: left;
+  transition: background .1s, border-color .1s;
+}
+.resume-opt:active { background: var(--bg-press); }
+.resume-opt.on { border-color: var(--accent); background: var(--accent-wash); }
+
+.resume-opt-name {
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.resume-opt-desc {
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ------------------------------------------------------------
+   Launch action
+   ------------------------------------------------------------ */
+.launch-actions {
+  position: sticky;
+  bottom: 0;
+  padding-top: 8px;
+  background: linear-gradient(to top, var(--bg) 62%, transparent);
+}
+
+.launch-summary {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--fg-mute);
+  text-align: center;
+}

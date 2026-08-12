@@ -1,0 +1,20 @@
+{
+  "name": "claude-remote",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Phone remote for Claude Code — streams real tmux PTYs to a browser over Tailscale.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "postinstall": "node server/postinstall.js",
+    "health": "node server/health-check.js"
+  },
+  "dependencies": {
+    "node-pty": "1.1.0",
+    "ws": "8.21.3"
+  }
+}

@@ -1,0 +1,185 @@
+/* ============================================================
+   Termlink — the terminal view and its keyboard bar.
+   ============================================================ */
+
+.appbar-term .appbar-main { padding-left: 2px; }
+
+.term-ident {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+/* Kind badge sits beside the title so you always know which CLI you are
+   typing into — the same signal the list row carries. */
+.term-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.term-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.term-path {
+  font-size: 10.5px;
+  color: var(--fg-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+}
+
+.conn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line-soft);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+.conn-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--fg-mute);
+  flex: 0 0 auto;
+}
+.conn[data-state="open"]        { color: var(--live); }
+.conn[data-state="open"] .conn-dot { background: var(--live); }
+.conn[data-state="connecting"], .conn[data-state="reconnecting"] { color: var(--accent); }
+.conn[data-state="connecting"] .conn-dot,
+.conn[data-state="reconnecting"] .conn-dot { background: var(--accent); animation: blink 1s ease-in-out infinite; }
+.conn[data-state="closed"], .conn[data-state="error"] { color: var(--danger); }
+.conn[data-state="closed"] .conn-dot,
+.conn[data-state="error"] .conn-dot { background: var(--danger); }
+.conn[data-state="detached"] { color: var(--fg-dim); }
+.conn[data-state="detached"] .conn-dot { background: var(--fg-dim); }
+
+.term-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--bg);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  overflow: hidden;
+}
+.term-mount { position: absolute; inset: 0 0 0 4px; }
+
+/* xterm surface tweaks */
+.term-mount .xterm { height: 100%; padding: 4px 0 0; }
+.term-mount .xterm-viewport {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  background-color: transparent !important;
+  scrollbar-width: none;
+}
+.term-mount .xterm-viewport::-webkit-scrollbar { width: 0; height: 0; }
+/* iOS zooms the page when a focused field is under 16px — xterm's helper
+   textarea is invisible, so we can raise it freely. */
+.xterm .xterm-helper-textarea { font-size: 16px !important; }
+
+.jump-bottom {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0,0,0,.45);
+  z-index: 5;
+}
+.jump-bottom[hidden] { display: none; }
+
+/* ------------------------------------------------------------
+   Keyboard bar — persistent, sits directly above the soft keyboard
+   ------------------------------------------------------------ */
+.keybar {
+  flex: 0 0 auto;
+  background: var(--bg-elev);
+  border-top: 1px solid var(--line);
+  padding: 6px 6px calc(6px + var(--kb-safe));
+  padding-left: calc(6px + var(--safe-left));
+  padding-right: calc(6px + var(--safe-right));
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: padding-bottom .12s ease;
+}
+
+.keyrow { display: flex; gap: 4px; }
+
+.key {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: var(--fg);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  transition: background .08s, border-color .08s, color .08s, transform .06s;
+}
+.key:active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  transform: translateY(1px);
+}
+.key svg { width: 17px; height: 17px; display: block; }
+
+/* wider, label-bearing keys in the quick-action row */
+.key-wide { flex: 1.35 1 0; font-size: 12px; }
+.key-danger { color: #eb937f; }
+.key-danger:active { background: var(--danger); border-color: var(--danger); color: #1a0f0a; }
+
+/* sticky modifier states */
+.key.armed {
+  background: var(--accent-wash);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.key.locked {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.key.locked::after {
+  content: "";
+  position: absolute;
+  margin: -22px 0 0 0;
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--on-accent);
+}
+
+.key.toggled { border-color: var(--accent); color: var(--accent); }

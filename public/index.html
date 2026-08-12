@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!--
+  viewport-fit=cover            -> we paint under the notch/home indicator ourselves
+  interactive-widget=resizes-content -> Android Chrome shrinks the layout viewport for the keyboard
+                                        (iOS ignores it; visualViewport handles iOS in viewport.js)
+  maximum-scale=1               -> belt-and-braces against focus-zoom; the real fix is the
+                                   16px font-size on every focusable input
+-->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Termlink</title>
+<meta name="description" content="Every terminal session on your Mac, from your phone.">
+<meta name="theme-color" content="#141413">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Termlink">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<link rel="icon" href="./icons/favicon-64.png" sizes="64x64" type="image/png">
+<link rel="stylesheet" href="./vendor/xterm.css">
+<link rel="stylesheet" href="./css/tokens.css">
+<link rel="stylesheet" href="./css/chrome.css">
+<link rel="stylesheet" href="./css/controls.css">
+<link rel="stylesheet" href="./css/sessions.css">
+<link rel="stylesheet" href="./css/launcher.css">
+<link rel="stylesheet" href="./css/usage.css">
+<link rel="stylesheet" href="./css/terminal.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ FIRST RUN / TOKEN ============ -->
+  <section class="view view-token" id="view-token" hidden>
+    <div class="token-wrap">
+      <div class="token-card">
+        <img class="token-logo" src="./icons/icon-192.png" alt="" width="64" height="64">
+        <h1 class="token-title">Termlink</h1>
+        <p class="token-sub">Every terminal session on your Mac, from your phone. Paste the access token the server printed.</p>
+        <form id="token-form" autocomplete="off">
+          <label class="field">
+            <span class="field-label">Access token</span>
+            <span class="field-row">
+              <input id="token-input" type="password" name="token" placeholder="••••••••••••••••"
+                     autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false"
+                     inputmode="text" enterkeyhint="go" required>
+              <button type="button" class="reveal" id="token-reveal" aria-label="Show token">show</button>
+            </span>
+          </label>
+          <p class="token-error" id="token-error" role="alert" hidden></p>
+          <button class="btn btn-primary" id="token-submit" type="submit">Connect</button>
+        </form>
+        <p class="token-hint" id="token-hint"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TABBED SHELL ============ -->
+  <div class="shell" id="shell" hidden>
+
+    <!-- ---------- SESSIONS ---------- -->
+    <section class="view view-list" id="view-sessions" hidden>
+      <header class="appbar">
+        <div class="appbar-main">
+          <h1 class="appbar-title">Sessions<span class="appbar-count" id="sessions-count"></span></h1>
+          <div class="appbar-actions">
+            <button class="icon-btn" id="btn-refresh" aria-label="Refresh"></button>
+            <button class="icon-btn icon-btn-accent" id="btn-new" aria-label="New session"></button>
+            <button class="icon-btn" id="btn-menu" aria-label="Menu"></button>
+          </div>
+        </div>
+        <div class="searchbar">
+          <input id="search-input" type="search" placeholder="Search project, path, or output"
+                 autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="search">
+          <button class="search-clear" id="search-clear" aria-label="Clear search" hidden></button>
+        </div>
+        <div class="filterbar scroll-x" id="filterbar"></div>
+      </header>
+      <div class="list-scroll scrollable" id="list-scroll">
+        <div id="list-body"></div>
+      </div>
+    </section>
+
+    <!-- ---------- USAGE ---------- -->
+    <section class="view view-usage" id="view-usage" hidden>
+      <header class="appbar">
+        <div class="appbar-main">
+          <h1 class="appbar-title">Usage</h1>
+          <div class="appbar-actions">
+            <button class="icon-btn" id="btn-usage-refresh" aria-label="Refresh usage"></button>
+          </div>
+        </div>
+        <div class="segbar" id="usage-windows" role="tablist" aria-label="Time window"></div>
+      </header>
+      <div class="usage-scroll scrollable" id="usage-scroll">
+        <div id="usage-body"></div>
+      </div>
+    </section>
+
+    <nav class="tabbar" id="tabbar" aria-label="Main">
+      <button class="tab" type="button" data-tab="sessions" aria-label="Sessions"></button>
+      <button class="tab" type="button" data-tab="usage" aria-label="Token usage"></button>
+    </nav>
+  </div>
+
+  <!-- ============ TERMINAL ============ -->
+  <section class="view view-term" id="view-term" hidden>
+    <header class="appbar appbar-term">
+      <div class="appbar-main">
+        <button class="icon-btn" id="btn-back" aria-label="Back to sessions"></button>
+        <div class="term-ident">
+          <span class="term-title" id="term-title">session</span>
+          <span class="term-path" id="term-path"></span>
+        </div>
+        <span class="kbadge" id="term-kind"></span>
+        <div class="conn" id="conn" data-state="idle">
+          <span class="conn-dot"></span><span class="conn-label" id="conn-label">idle</span>
+        </div>
+        <button class="icon-btn" id="btn-term-menu" aria-label="Session menu"></button>
+      </div>
+    </header>
+
+    <div class="term-stage" id="term-stage">
+      <div class="term-mount" id="term-mount"></div>
+      <button class="jump-bottom" id="jump-bottom" hidden>Jump to latest</button>
+    </div>
+
+    <!-- Mobile keyboard bar: the make-or-break surface. Built in keybar.js -->
+    <div class="keybar" id="keybar"></div>
+  </section>
+
+</div>
+
+<div class="toast-host" id="toast-host" aria-live="polite"></div>
+<div class="sheet-host" id="sheet-host"></div>
+
+<noscript>
+  <p style="color:#f0eee6;font-family:monospace;padding:24px">Termlink needs JavaScript.</p>
+</noscript>
+
+<script type="module" src="./js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,466 @@
+/* ============================================================
+   Termlink — app chrome shared by every view:
+   app bar, tab bar, buttons, fields, token screen, sheets, toasts.
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   App bar
+   ------------------------------------------------------------ */
+.appbar {
+  flex: 0 0 auto;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line-soft);
+  padding-top: var(--safe-top);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+.appbar-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 52px;
+  padding: 0 8px;
+}
+
+.appbar-title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding-left: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.appbar-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-mute);
+  font-variant-numeric: tabular-nums;
+}
+.appbar-count:empty { display: none; }
+
+.appbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.icon-btn {
+  width: var(--tap);
+  height: var(--tap);
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--fg-dim);
+  transition: background .12s, color .12s;
+}
+.icon-btn:active { background: var(--bg-press); color: var(--fg); }
+.icon-btn svg { width: 21px; height: 21px; display: block; }
+.icon-btn-accent { color: var(--accent); }
+.icon-btn.spinning svg { animation: spin .7s linear infinite; }
+
+/* ------------------------------------------------------------
+   Search
+   ------------------------------------------------------------ */
+.searchbar {
+  position: relative;
+  padding: 0 12px 10px;
+}
+.searchbar input {
+  width: 100%;
+  height: 40px;
+  padding: 0 36px 0 12px;
+  background: var(--bg-elev);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  font-size: 16px;
+  color: var(--fg);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.searchbar input::placeholder { color: var(--fg-mute); }
+.searchbar input:focus { border-color: var(--accent-deep); background: var(--bg-elev-2); }
+.searchbar input::-webkit-search-cancel-button { display: none; }
+
+.search-clear {
+  position: absolute;
+  right: 16px;
+  top: 0;
+  width: 36px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  color: var(--fg-mute);
+}
+.search-clear svg { width: 16px; height: 16px; }
+
+/* ------------------------------------------------------------
+   Tab bar — the app's primary navigation
+   ------------------------------------------------------------ */
+.tabbar {
+  flex: 0 0 auto;
+  display: flex;
+  background: var(--bg-elev);
+  border-top: 1px solid var(--line);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+.tab {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--fg-mute);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  transition: color .12s;
+}
+.tab svg { width: 20px; height: 20px; display: block; }
+.tab-label { line-height: 1; }
+.tab:active { color: var(--fg-dim); }
+.tab.on { color: var(--accent); }
+
+/* ------------------------------------------------------------
+   Buttons
+   ------------------------------------------------------------ */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 48px;
+  border-radius: var(--radius);
+  background: var(--bg-elev-2);
+  border: 1px solid var(--line);
+  color: var(--fg);
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  transition: background .1s, transform .06s;
+}
+.btn:active { transform: translateY(1px); background: var(--bg-press); }
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+.btn-primary:active { background: var(--accent-deep); border-color: var(--accent-deep); }
+.btn-danger { color: var(--danger); border-color: #4a2b25; }
+.btn-danger:active { background: #2e1b17; }
+.btn[disabled] { opacity: .5; pointer-events: none; }
+
+/* ------------------------------------------------------------
+   Fields
+   ------------------------------------------------------------ */
+.field { display: block; text-align: left; margin-bottom: 14px; }
+.field-label {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+  margin-bottom: 7px;
+}
+.field-row {
+  display: flex;
+  align-items: center;
+  background: var(--bg-elev);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.field-row:focus-within { border-color: var(--accent-deep); }
+.field-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 48px;
+  padding: 0 14px;
+  background: none;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+.reveal {
+  flex: 0 0 auto;
+  height: 48px;
+  padding: 0 14px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+.reveal:active { color: var(--accent); }
+
+/* Standalone text input used outside .field-row (sheets, launcher). */
+.text-input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  outline: none;
+  font-size: 16px;
+  color: var(--fg);
+}
+.text-input:focus { border-color: var(--accent-deep); }
+.text-input::placeholder { color: var(--fg-mute); }
+
+/* ------------------------------------------------------------
+   Token screen
+   ------------------------------------------------------------ */
+.token-wrap {
+  flex: 1 1 auto;
+  display: grid;
+  place-items: center;
+  padding: 24px calc(24px + var(--safe-left)) calc(24px + var(--safe-bottom)) calc(24px + var(--safe-right));
+  padding-top: calc(24px + var(--safe-top));
+  overflow-y: auto;
+}
+.token-card { width: 100%; max-width: 380px; text-align: center; }
+.token-logo { border-radius: 15px; margin-bottom: 18px; }
+.token-title { margin: 0 0 8px; font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+.token-sub { margin: 0 0 28px; font-size: 13.5px; line-height: 1.55; color: var(--fg-dim); }
+
+.token-error {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  background: #2e1b17;
+  border: 1px solid #4a2b25;
+  border-radius: 10px;
+  color: #f0a494;
+  font-size: 12.5px;
+  line-height: 1.45;
+  text-align: left;
+}
+.token-hint {
+  margin: 18px 0 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--fg-mute);
+}
+
+/* ------------------------------------------------------------
+   Empty / loading states
+   ------------------------------------------------------------ */
+.state {
+  padding: 56px 32px;
+  text-align: center;
+  color: var(--fg-mute);
+}
+.state-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--fg-dim);
+  margin: 0 0 6px;
+}
+.state-sub { font-size: 13px; margin: 0 0 20px; line-height: 1.5; }
+.state .btn { display: inline-flex; width: auto; padding: 0 22px; }
+
+.skeleton {
+  height: 72px;
+  border-bottom: 1px solid var(--line-soft);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.025), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+/* ------------------------------------------------------------
+   Bottom sheet
+   ------------------------------------------------------------ */
+.sheet-host { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+.sheet-host:empty { display: none; }
+
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  opacity: 0;
+  transition: opacity .2s ease;
+  pointer-events: auto;
+}
+.sheet-backdrop.in { opacity: 1; }
+
+.sheet {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  max-height: 82%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elev);
+  border-top: 1px solid var(--line);
+  border-radius: 18px 18px 0 0;
+  transform: translateY(100%);
+  transition: transform .24s cubic-bezier(.32,.72,0,1);
+  pointer-events: auto;
+  padding-bottom: var(--safe-bottom);
+  box-shadow: 0 -8px 40px rgba(0,0,0,.5);
+}
+.sheet.in { transform: translateY(0); }
+
+.sheet-grab {
+  width: 36px; height: 4px;
+  margin: 8px auto 2px;
+  border-radius: 2px;
+  background: var(--line);
+  flex: 0 0 auto;
+}
+.sheet-title {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 12px 20px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--fg-mute);
+}
+.sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 16px 16px;
+}
+
+.sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 8px;
+  text-align: left;
+  border-radius: 10px;
+  transition: background .1s;
+}
+.sheet-item:active { background: var(--bg-elev-2); }
+.sheet-item + .sheet-item { border-top: 1px solid var(--line-soft); }
+.sheet-item-main { flex: 1 1 auto; min-width: 0; }
+.sheet-item-cmd { font-size: 14.5px; font-weight: 600; color: var(--accent); }
+.sheet-item-name { font-size: 14.5px; font-weight: 600; }
+.sheet-item-desc { margin-top: 2px; font-size: 11.5px; color: var(--fg-mute); line-height: 1.4; }
+.sheet-item.danger .sheet-item-name { color: var(--danger); }
+.sheet-item.on { background: var(--bg-elev-2); }
+.sheet-tick { flex: 0 0 auto; color: var(--accent); font-size: 15px; }
+
+.sheet-send {
+  flex: 0 0 auto;
+  width: var(--tap);
+  height: var(--tap);
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  color: var(--fg-dim);
+  font-size: 15px;
+}
+.sheet-send:active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+.sheet-note {
+  padding: 4px 8px 12px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--fg-mute);
+}
+
+/* stepper (font size) */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.stepper button {
+  width: var(--tap); height: var(--tap);
+  display: grid; place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--fg);
+}
+.stepper button:active { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.stepper-val {
+  min-width: 44px;
+  text-align: center;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-dim);
+}
+
+/* sheet form fields */
+.sheet-field { margin-bottom: 14px; }
+.sheet-field .field-label { margin-bottom: 7px; }
+.sheet-field input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  outline: none;
+  font-size: 16px;
+  color: var(--fg);
+}
+.sheet-field input:focus { border-color: var(--accent-deep); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip {
+  max-width: 100%;
+  min-height: 36px;
+  padding: 8px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+  font-size: 11.5px;
+  color: var(--fg-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip:active { background: var(--accent-wash); border-color: var(--accent); color: var(--accent); }
+
+/* ------------------------------------------------------------
+   Toast
+   ------------------------------------------------------------ */
+.toast-host {
+  position: fixed;
+  left: 0; right: 0;
+  bottom: calc(16px + var(--safe-bottom));
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  padding: 0 16px;
+}
+.toast {
+  max-width: 100%;
+  padding: 11px 16px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 12.5px;
+  color: var(--fg);
+  box-shadow: 0 6px 24px rgba(0,0,0,.5);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity .18s, transform .18s;
+}
+.toast.in { opacity: 1; transform: translateY(0); }
+.toast.err { border-color: #4a2b25; color: #f0a494; }
