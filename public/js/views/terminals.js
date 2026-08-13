@@ -12,8 +12,9 @@
  * (see scripts/terminal-input.js), so the agent running in it receives them
  * exactly as if they had been typed at the keyboard.
  */
-import { api, ApiError } from '../api.js';
-import { icon, toast } from '../ui.js';
+import { api, ApiError, clearToken } from '../api.js';
+import { h, icon, sheet, confirmSheet, toast } from '../ui.js';
+import { openPushSheet, pushMenuRow } from '../push.js';
 
 const POLL_MS = 4000;
 /** While a window is open, poll fast enough to watch it respond. */
@@ -32,6 +33,7 @@ export function createTerminalsView() {
   const countEl = document.getElementById('terminals-count');
   const btnRefresh = document.getElementById('btn-terminals-refresh');
   const btnNew = document.getElementById('btn-terminals-new');
+  const btnMenu = document.getElementById('btn-terminals-menu');
 
   let windows = [];
   let visible = false;
@@ -355,12 +357,65 @@ export function createTerminalsView() {
     return el;
   }
 
+
+  /* ----------------------------------------------------------------- menu */
+
+  function menuItem(name, desc, iconName, onClick, danger = false) {
+    return h('div', {
+      class: `sheet-item${danger ? ' danger' : ''}`,
+      role: 'button', tabindex: '0', onClick,
+    },
+      icon(iconName, 19),
+      h('div', { class: 'sheet-item-main' },
+        h('div', { class: 'sheet-item-name' }, name),
+        h('div', { class: 'sheet-item-desc' }, desc),
+      ),
+    );
+  }
+
+  /**
+   * The app's only overflow menu. It used to hang off the sessions tab; when
+   * that tab was removed the notifications toggle went with it, which is the
+   * one setting the phone genuinely needs.
+   */
+  function openMenu() {
+    sheet({
+      title: 'Vibermote',
+      build(body, close) {
+        body.append(
+          menuItem('Refresh now', 'Re-read the Mac\'s windows', 'refresh',
+                   () => { close(); load(); }),
+          // Its own sheet: turning notifications on has to explain iOS's
+          // Home-Screen rule, and the permission prompt must come from a tap.
+          pushMenuRow(() => { close(); openPushSheet(); }),
+          menuItem('Forget token', 'Sign out of this device', 'logout', async () => {
+            close();
+            const ok = await confirmSheet({
+              title: 'Forget token',
+              message: 'The stored access token is removed from this device. You will need to paste it again.',
+              confirmLabel: 'Forget token',
+              danger: true,
+            });
+            if (ok) {
+              clearToken();
+              window.dispatchEvent(new CustomEvent('cr:unauthorized'));
+            }
+          }, true),
+          h('p', { class: 'sheet-note' },
+            `Connected to ${location.host}. Windows refresh every ${POLL_MS / 1000}s.`),
+        );
+      },
+    });
+  }
+
   /* ---------------------------------------------------------------- wiring */
 
   btnRefresh?.append(icon('refresh'));
   btnRefresh?.addEventListener('click', () => load());
   btnNew?.append(icon('plus'));
   btnNew?.addEventListener('click', () => { newSheet().hidden = false; });
+  btnMenu?.append(icon('more'));
+  btnMenu?.addEventListener('click', openMenu);
 
   return {
     show() {
