@@ -18,7 +18,6 @@ import { applyServerKinds, getKind } from './kinds.js';
 import { createSessionsView } from './views/sessions.js';
 import { createTerminalsView } from './views/terminals.js';
 import { createUsageView } from './views/usage.js';
-import { createAssistantView } from './views/assistant.js';
 import { createKeybar } from './keybar.js';
 import {
   getSessionTerm, dropSessionTerm, disconnectAll, getFontSize, MAX_CACHED,
@@ -43,12 +42,11 @@ const views = {
 /** The tabbed screens inside `#shell`, keyed by their `data-tab` value. */
 const tabViews = {
   terminals: document.getElementById('view-terminals'),
-  assistant: document.getElementById('view-assistant'),
   usage: document.getElementById('view-usage'),
 };
 
-const TAB_ICONS = { terminals: 'terminal', assistant: 'sparkle', usage: 'chart' };
-const TAB_LABELS = { terminals: 'Terminals', assistant: 'Assistant', usage: 'Usage' };
+const TAB_ICONS = { terminals: 'terminal', usage: 'chart' };
+const TAB_LABELS = { terminals: 'Terminals', usage: 'Usage' };
 
 const els = {
   tokenForm: document.getElementById('token-form'),
@@ -112,11 +110,7 @@ const resuming = new Map();
 const sessionsView = createSessionsView({ onOpen: openSession });
 const terminalsView = createTerminalsView();
 const usageView = createUsageView();
-// Same onOpen contract as the sessions view: the assistant's Run button creates a
-// custom session and hands it back here to open. The model never executes anything.
-const assistantView = createAssistantView({ onOpen: openSession });
-
-const tabViewApis = { terminals: terminalsView, assistant: assistantView, usage: usageView };
+const tabViewApis = { terminals: terminalsView, usage: usageView };
 
 const keybar = createKeybar(els.keybar, {
   send: (data) => term?.sendRaw(data),

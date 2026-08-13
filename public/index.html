@@ -117,31 +117,7 @@
       </div>
     </section>
 
-    <!-- ---------- ASSISTANT ---------- -->
-    <section class="view view-assistant" id="view-assistant" hidden>
-      <header class="appbar">
-        <div class="appbar-main">
-          <h1 class="appbar-title">Assistant</h1>
-          <div class="appbar-actions">
-            <button class="icon-btn" id="ai-context" aria-label="Context and model"></button>
-            <button class="icon-btn" id="btn-ai-new" aria-label="New conversation"></button>
-          </div>
-        </div>
-      </header>
-      <div class="ai-scroll scrollable" id="ai-scroll">
-        <div id="ai-thread"></div>
-      </div>
-      <!-- enterkeyhint/autocapitalize/autocorrect off: iOS otherwise capitalises
-           and autocorrects shell text into something that will not run. -->
-      <form class="ai-composer" id="ai-composer">
-        <input class="ai-input" id="ai-input" type="text" autocomplete="off"
-               autocapitalize="off" autocorrect="off" spellcheck="false"
-               enterkeyhint="send" placeholder="Ask for a command…">
-        <button class="ai-send" id="ai-send" type="submit" aria-label="Send"></button>
-      </form>
-    </section>
-
-    <!-- ---------- WALL (mirror of the Mac's Terminal windows) ---------- -->
+    <!-- ---------- TERMINALS (the Mac's real windows) ---------- -->
     <section class="view view-terminals" id="view-terminals" hidden>
       <header class="appbar">
         <div class="appbar-main">
@@ -153,12 +129,12 @@
           </div>
         </div>
       </header>
+      <div class="health health-hide" id="terminals-health"></div>
       <div class="terminals-scroll scrollable" id="terminals-body"></div>
     </section>
 
     <nav class="tabbar" id="tabbar" aria-label="Main">
       <button class="tab" type="button" data-tab="terminals" aria-label="Terminals"></button>
-      <button class="tab" type="button" data-tab="assistant" aria-label="Assistant"></button>
       <button class="tab" type="button" data-tab="usage" aria-label="Token usage"></button>
     </nav>
   </div>

@@ -291,3 +291,65 @@
 }
 
 .appbar-count.needs { color: #febc2e; }
+
+/* ---------------------------------------------------------- health strip
+
+   One line above the list: is the Mac coping, and is it still answering at
+   all. The unreachable state is the important one -- a frozen Mac cannot
+   report its own condition, so silence is the only evidence there is. */
+
+.health {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.health-hide { display: none; }
+
+.health-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #28c840;
+}
+.health-ok   { color: #8a8a8e; }
+.health-warn { color: #febc2e; }
+.health-warn .health-dot { background: #febc2e; }
+.health-bad  { color: #ff5f57; }
+.health-bad .health-dot { background: #ff5f57; }
+
+.health-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.health-note {
+  flex: none;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #febc2e;
+  border: 1px solid rgba(254, 188, 46, 0.5);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+.health-act {
+  flex: none;
+  appearance: none;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 9px;
+  cursor: pointer;
+}

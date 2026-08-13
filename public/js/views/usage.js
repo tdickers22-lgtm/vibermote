@@ -57,6 +57,7 @@ export function createUsageView() {
   let data = null;        // /api/usage
   let projects = null;    // /api/usage/projects
   let codex = null;       // /api/usage/codex — fetched once, not window-scoped
+  let opencode = null;    // /api/usage/opencode — window-scoped, from its SQLite db
   let error = null;
   let inFlight = false;
   let loadedOnce = false;
@@ -74,12 +75,16 @@ export function createUsageView() {
     renderSegbar();
     try {
       if (force) await api.usageRefresh();
-      const [overview, byProject] = await Promise.all([
+      const [overview, byProject, oc] = await Promise.all([
         api.usage(window_),
         api.usageProjects(window_),
+        // opencode does its own accounting, so this is cheap and window-scoped.
+        // Its absence must never blank the Claude figures either.
+        api.usageOpencode(window_).catch(() => null),
       ]);
       data = overview;
       projects = byProject;
+      opencode = oc;
       error = null;
       loadedOnce = true;
       // Codex is a separate, slower source and is not window-scoped. Its
@@ -139,6 +144,7 @@ export function createUsageView() {
     }
 
     body.append(codexCard());
+    body.append(opencodeCard());
     body.append(basisCard());
   }
 
@@ -353,6 +359,58 @@ export function createUsageView() {
    *   - `reasoning` is a SUBSET of output, so it appears indented as "of which"
    *     and never as its own bar segment — it must not read as additive.
    */
+  /**
+   * opencode, read from ~/.local/share/opencode/opencode.db.
+   *
+   * The only source that needs no pricing table of its own: opencode records a
+   * cost per session, so this reports what it recorded rather than multiplying
+   * tokens by a rate that may be wrong for a self-hosted or free model.
+   */
+  function opencodeCard() {
+    const card = h('div', { class: 'ucard' }, h('h2', { class: 'ucard-title' }, 'opencode'));
+
+    if (!opencode || !opencode.available) {
+      card.append(h('p', { class: 'unote' },
+        'No opencode database on this machine.'));
+      return card;
+    }
+    const t = opencode.totals || {};
+    if (!t.sessions) {
+      card.append(h('p', { class: 'unote' }, 'No opencode usage in this window.'));
+      return card;
+    }
+
+    card.append(h('div', { class: 'urow-top' },
+      h('span', { class: 'urow-name' }, 'Cost (as recorded)'),
+      h('span', { class: 'urow-val' }, money(t.cost, 'USD')),
+    ));
+
+    const parts = [
+      { label: 'Input', value: t.input, cls: 'in' },
+      { label: 'Cache read', value: t.cacheRead, cls: 'cr' },
+      { label: 'Output', value: t.output, cls: 'out' },
+    ];
+    for (const p of parts) {
+      if (!p.value) continue;
+      card.append(h('div', { class: 'urow' },
+        h('span', { class: `udot ${p.cls}` }),
+        h('span', { class: 'urow-name' }, p.label),
+        h('span', { class: 'urow-val' }, compact(p.value)),
+      ));
+    }
+
+    card.append(h('p', { class: 'unote unote-thin' },
+      `${t.sessions} session${t.sessions === 1 ? '' : 's'}`));
+
+    for (const m of (opencode.byModel || []).slice(0, 5)) {
+      card.append(h('div', { class: 'urow' },
+        h('span', { class: 'urow-name' }, m.model),
+        h('span', { class: 'urow-val' }, compact(m.input + m.output)),
+      ));
+    }
+    return card;
+  }
+
   function codexCard() {
     const card = h('div', { class: 'ucard' }, h('h2', { class: 'ucard-title' }, 'Codex'));
 

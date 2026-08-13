@@ -38,7 +38,8 @@ import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { handleAssistantApi } from './assistant.js';
-import { listTerminalWindows, sendInput, openWindow } from './terminal-app.js';
+import { listTerminalWindows, sendInput, openWindow, terminalHealthy } from './terminal-app.js';
+import { readVitals, restartMac } from './vitals.js';
 import { checkAuth } from './auth.js';
 import { PROJECT_ROOT, TMUX_BIN, HARDENED_PATH, LOGIN_SHELL, SAVED_COMMANDS_PATH } from './config.js';
 import { listAllSessions, findSession, listProjects, parseId } from './discovery.js';
@@ -58,6 +59,7 @@ import {
 } from './saved-commands.js';
 import * as tmuxApi from './tmux.js';
 import * as usage from './usage.js';
+import { opencodeUsage } from './opencode-usage.js';
 import { readPower } from './power.js';
 import { log, summarize } from './util.js';
 
@@ -356,6 +358,26 @@ async function handleApi(req, res, url, pathname, bindInfo) {
     return;
   }
 
+  /**
+   * How the Mac is holding up, and whether it could recover from a freeze on
+   * its own. See server/vitals.js for what this deliberately cannot tell you.
+   */
+  if (pathname === '/api/vitals' && method === 'GET') {
+    sendJson(res, 200, await readVitals({ terminalOk: terminalHealthy() }));
+    return;
+  }
+
+  /** Restart the Mac. Destructive and deliberate; the client confirms first. */
+  if (pathname === '/api/system/restart' && method === 'POST') {
+    const body = await readBody(req);
+    if (body.confirm !== true) {
+      sendJson(res, 400, { error: 'confirm must be true' });
+      return;
+    }
+    sendJson(res, 200, await restartMac());
+    return;
+  }
+
   /* -------------------- Terminal.app mirror -------------------- */
   /**
    * Every Terminal.app window on the Mac, ordered by project then CLI, each
@@ -395,7 +417,14 @@ async function handleApi(req, res, url, pathname, bindInfo) {
     return;
   }
 
-  /** Open a new Terminal window on the Mac. */
+  /**
+   * Open a new Terminal window on the Mac.
+   *
+   * Refuses when the machine is already saturated, because the failure this
+   * guards against is not a slow window — it is the whole Mac going down and
+   * taking every running agent with it. Overridable with `force`, since the
+   * caller can see the numbers and may know better.
+   */
   if (pathname === '/api/terminal-windows' && method === 'POST') {
     const body = await readBody(req);
     const cwd = firstString(body.cwd, body.projectDir) || '';
@@ -403,6 +432,19 @@ async function handleApi(req, res, url, pathname, bindInfo) {
     if (command.length > MAX_COMMAND_LENGTH) {
       sendJson(res, 400, { error: 'command too long' });
       return;
+    }
+    if (body.force !== true) {
+      const vitals = await readVitals({ terminalOk: terminalHealthy() });
+      if (vitals.state === 'critical') {
+        sendJson(res, 409, {
+          error: 'the Mac is already overloaded',
+          state: vitals.state,
+          detail: `load ${vitals.cpu.load1.toFixed(1)} on ${vitals.cpu.cores} cores`
+            + (vitals.memory ? `, memory ${vitals.memory.usedPct}% used` : ''),
+          hint: 'send force:true to open one anyway',
+        });
+        return;
+      }
     }
     const result = await openWindow({ cwd, command });
     sendJson(res, result.ok ? 200 : 500, result);
@@ -492,6 +534,21 @@ async function handleApi(req, res, url, pathname, bindInfo) {
 
     if (pathname === '/api/usage' && method === 'GET') {
       sendJson(res, 200, await usage.overview({ window }));
+      return;
+    }
+
+    if (pathname === '/api/usage/opencode' && method === 'GET') {
+      // opencode timestamps are absolute ms, so the window is a plain floor
+      // rather than usage.js's day-key arithmetic.
+      const days = window === 'today' ? 0 : window === '7d' ? 6 : window === '30d' ? 29 : null;
+      let sinceMs = 0;
+      if (days !== null) {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        d.setDate(d.getDate() - days);
+        sinceMs = d.getTime();
+      }
+      sendJson(res, 200, await opencodeUsage({ sinceMs }));
       return;
     }
 

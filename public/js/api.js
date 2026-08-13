@@ -221,9 +221,22 @@ export const api = {
     });
   },
 
-  /** Open a new Terminal window on the Mac, optionally in a directory. */
-  openTerminalWindow({ cwd = '', command = '' } = {}) {
-    return request('/api/terminal-windows', { method: 'POST', body: { cwd, command } });
+  /**
+   * Open a new Terminal window on the Mac, optionally in a directory.
+   * Refused with 409 when the Mac is already overloaded; `force` overrides.
+   */
+  openTerminalWindow({ cwd = '', command = '', force = false } = {}) {
+    return request('/api/terminal-windows', { method: 'POST', body: { cwd, command, force } });
+  },
+
+  /** How the Mac is holding up, and whether it could recover from a freeze. */
+  vitals() {
+    return request('/api/vitals', { timeout: 8000 });
+  },
+
+  /** Restart the Mac. The caller confirms first; this does not ask. */
+  restartMac() {
+    return request('/api/system/restart', { method: 'POST', body: { confirm: true } });
   },
 
   /**
@@ -410,6 +423,10 @@ export const api = {
 
   usage: (window = 'all') =>
     request(`/api/usage?window=${encodeURIComponent(window)}`, { timeout: 45000 }),
+
+  /** opencode's own accounting, read from its SQLite database. */
+  usageOpencode: (window = 'all') =>
+    request(`/api/usage/opencode?window=${encodeURIComponent(window)}`, { timeout: 20000 }),
 
   usageProjects: (window = 'all') =>
     request(`/api/usage/projects?window=${encodeURIComponent(window)}`, { timeout: 45000 }),

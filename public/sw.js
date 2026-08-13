@@ -24,7 +24,7 @@
  * after. Static assets are served stale-while-revalidate, so without a bump the
  * first load after a deploy still runs the previous build.
  */
-const VERSION = 'v12';
+const VERSION = 'v14';
 const CACHE = `term-remote-shell-${VERSION}`;
 
 /**
@@ -58,7 +58,6 @@ const SHELL = [
   './js/views/sessions.js',
   './js/views/terminals.js',
   './js/views/usage.js',
-  './js/views/assistant.js',
   './vendor/xterm.css',
   './vendor/xterm.mjs',
   './vendor/addon-fit.mjs',

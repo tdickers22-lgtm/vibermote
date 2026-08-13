@@ -16,9 +16,23 @@ import { api, ApiError, clearToken } from '../api.js';
 import { h, icon, sheet, confirmSheet, toast } from '../ui.js';
 import { openPushSheet, pushMenuRow } from '../push.js';
 
-const POLL_MS = 4000;
-/** While a window is open, poll fast enough to watch it respond. */
-const POLL_MS_ZOOM = 1200;
+/**
+ * Refresh cadence.
+ *
+ * Every refresh is an Apple Event round trip to Terminal on the Mac, so this is
+ * a direct tax on the machine you are trying to keep responsive. The list is
+ * therefore deliberately slow -- you are scanning, not watching -- and only the
+ * window you actually opened refreshes at a rate that feels live. When the Mac
+ * reports itself busy the whole thing backs off further, because the moment
+ * polling matters least is exactly the moment it costs most.
+ */
+const POLL_MS = 10000;
+/** The one window you are looking at, where a delay reads as broken. */
+const POLL_MS_ZOOM = 2500;
+/** Multiplier applied when the Mac says it is under strain. */
+const BACKOFF = { ok: 1, busy: 2, critical: 4 };
+/** Vitals move slowly and cost more than a snapshot; sample them sparingly. */
+const VITALS_MS = 30000;
 /** Lines of the screen a card shows. The bottom is the part that matters. */
 const CARD_LINES = 14;
 
@@ -42,6 +56,14 @@ export function createTerminalsView() {
   let loadedOnce = false;
   let zoomedId = null;
   let sending = false;
+  let vitals = null;
+  /**
+   * When the Mac last answered. A frozen or dead Mac cannot tell you it is in
+   * trouble -- the server is inside the thing that froze -- so the only honest
+   * detector lives here, on the phone: how long since anything came back.
+   */
+  let lastContactAt = 0;
+  let vitalsTimer = 0;
 
   /* --------------------------------------------------------------- loading */
 
@@ -51,6 +73,7 @@ export function createTerminalsView() {
     if (!quiet) btnRefresh?.classList.add('spinning');
     try {
       windows = await api.listTerminalWindows();
+      lastContactAt = Date.now();
       loadedOnce = true;
       render();
     } catch (err) {
@@ -63,12 +86,88 @@ export function createTerminalsView() {
     }
   }
 
+  function pollDelay() {
+    const base = zoomedId ? POLL_MS_ZOOM : POLL_MS;
+    return base * (BACKOFF[vitals?.state] || 1);
+  }
+
+  async function loadVitals() {
+    try {
+      vitals = await api.vitals();
+      lastContactAt = Date.now();
+    } catch {
+      /* leave the previous reading; the banner is driven by lastContactAt */
+    }
+    renderHealth();
+  }
+
+  function scheduleVitals() {
+    clearTimeout(vitalsTimer);
+    vitalsTimer = setTimeout(async () => {
+      if (visible && !document.hidden) await loadVitals();
+      if (visible) scheduleVitals();
+    }, VITALS_MS);
+  }
+
+  /* --------------------------------------------------------------- health */
+
+  function fmtUptime(sec) {
+    const d = Math.floor(sec / 86400);
+    const h = Math.floor((sec % 86400) / 3600);
+    return d ? `${d}d ${h}h` : `${h}h`;
+  }
+
+  function renderHealth() {
+    const el = document.getElementById('terminals-health');
+    if (!el) return;
+    el.textContent = '';
+
+    // Unreachable beats every other reading: a stale number presented as
+    // current is worse than saying plainly that nothing is coming back.
+    const silence = lastContactAt ? Date.now() - lastContactAt : 0;
+    if (lastContactAt && silence > 90000) {
+      el.className = 'health health-bad';
+      el.append(
+        h('span', { class: 'health-dot' }),
+        h('span', { class: 'health-main' },
+          `No answer for ${Math.round(silence / 1000)}s — the Mac may be frozen or asleep`),
+        h('button', { class: 'health-act', type: 'button', onClick: () => load() }, 'Retry'),
+      );
+      return;
+    }
+    if (!vitals) { el.className = 'health health-hide'; return; }
+
+    const v = vitals;
+    const cls = v.state === 'critical' ? 'health-bad'
+              : v.state === 'busy' ? 'health-warn' : 'health-ok';
+    el.className = `health ${cls}`;
+
+    const bits = [`load ${v.cpu.load1.toFixed(1)}/${v.cpu.cores}`];
+    if (v.memory) bits.push(`mem ${v.memory.usedPct}%`);
+    if (v.power && v.power.percent != null) {
+      bits.push(`${v.power.percent}%${v.power.onBattery ? '' : ' ⚡'}`);
+    }
+    if (v.terminalResponsive === false) bits.push('Terminal not responding');
+    bits.push(`up ${fmtUptime(v.uptime)}`);
+
+    el.append(
+      h('span', { class: 'health-dot' }),
+      h('span', { class: 'health-main' }, bits.join(' · ')),
+    );
+
+    // Sleep is the quiet killer: the Mac vanishing mid-job looks exactly like a
+    // crash from the phone, and on battery this one idles out after a minute.
+    if (v.power && v.power.onBattery && !v.power.sleepHeld) {
+      el.append(h('span', { class: 'health-note' }, 'sleep not held'));
+    }
+  }
+
   function schedulePoll() {
     clearTimeout(timer);
     timer = setTimeout(async () => {
       if (visible && !document.hidden) await load({ quiet: true });
       if (visible) schedulePoll();
-    }, zoomedId ? POLL_MS_ZOOM : POLL_MS);
+    }, pollDelay());
   }
 
   /* -------------------------------------------------------------- render */
@@ -145,6 +244,7 @@ export function createTerminalsView() {
       countEl.textContent = needs ? ` ${needs} need you` : ` ${windows.length}`;
       countEl.classList.toggle('needs', needs > 0);
     }
+    renderHealth();
     body.textContent = '';
 
     let lastGroup = null;
@@ -356,7 +456,25 @@ export function createTerminalsView() {
         await new Promise((r) => setTimeout(r, 600));
         await load({ quiet: true });
       } catch (err) {
-        toast(err.message || 'Could not open a window', { error: true });
+        // 409 is the overload guard, not a failure: offer the override.
+        if (err instanceof ApiError && err.status === 409) {
+          const go = await confirmSheet({
+            title: 'The Mac is overloaded',
+            message: `${err.body?.detail || 'Load is very high'}. Opening another window now risks taking the whole machine down. Open it anyway?`,
+            confirmLabel: 'Open anyway',
+            danger: true,
+          });
+          if (go) {
+            await api.openTerminalWindow({
+              cwd: dir.value.trim(), command: cmd.value.trim(), force: true,
+            });
+            el.hidden = true;
+            await new Promise((r) => setTimeout(r, 600));
+            await load({ quiet: true });
+          }
+        } else {
+          toast(err.message || 'Could not open a window', { error: true });
+        }
       } finally {
         create.disabled = false;
       }
@@ -400,6 +518,26 @@ export function createTerminalsView() {
           // Its own sheet: turning notifications on has to explain iOS's
           // Home-Screen rule, and the permission prompt must come from a tap.
           pushMenuRow(() => { close(); openPushSheet(); }),
+          menuItem('Restart the Mac', 'Everything running stops', 'power', async () => {
+            close();
+            const rec = vitals?.recovery;
+            const warn = rec && !rec.unattended
+              ? '\n\nThis Mac is NOT set up to come back on its own: after the restart it stops at the login window and Vibermote will be unreachable until someone signs in.'
+              : '';
+            const ok = await confirmSheet({
+              title: 'Restart the Mac',
+              message: `Every agent and every unsaved thing stops.${warn}`,
+              confirmLabel: 'Restart',
+              danger: true,
+            });
+            if (!ok) return;
+            try {
+              const r = await api.restartMac();
+              toast(r.note || 'Restart requested');
+            } catch (err) {
+              toast(err.message || 'Could not restart', { error: true });
+            }
+          }, true),
           menuItem('Forget token', 'Sign out of this device', 'logout', async () => {
             close();
             const ok = await confirmSheet({
@@ -414,7 +552,8 @@ export function createTerminalsView() {
             }
           }, true),
           h('p', { class: 'sheet-note' },
-            `Connected to ${location.host}. Windows refresh every ${POLL_MS / 1000}s.`),
+            `Connected to ${location.host}. Windows refresh every ${pollDelay() / 1000}s`
+            + `${zoomedId ? '' : ', faster while one is open'}.`),
         );
       },
     });
@@ -433,11 +572,14 @@ export function createTerminalsView() {
     show() {
       visible = true;
       load({ quiet: loadedOnce });
+      loadVitals();
       schedulePoll();
+      scheduleVitals();
     },
     hide() {
       visible = false;
       clearTimeout(timer);
+      clearTimeout(vitalsTimer);
       closeZoom();
       const sheet = document.getElementById('terminals-new');
       if (sheet) sheet.hidden = true;

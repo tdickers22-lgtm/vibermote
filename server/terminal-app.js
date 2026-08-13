@@ -82,8 +82,10 @@ function runSnapshot(extra = []) {
       (err, stdout) => {
         if (err) {
           log.debug('terminal snapshot failed:', err.message);
+          lastSnapshotOk = false;
           return resolve([]);
         }
+        lastSnapshotOk = true;
         try {
           const parsed = JSON.parse(stdout);
           if (!parsed.ok) {
@@ -114,6 +116,14 @@ const STALE_MS = 20_000;
 
 /** window id -> { hash, changedAt, seenAt, state } */
 const states = new Map();
+
+/**
+ * Did Terminal answer last time we asked? A wedged window server still serves
+ * HTTP, so a timed-out Apple Event is the best in-process evidence that the
+ * GUI has stopped responding.
+ */
+let lastSnapshotOk = null;
+export function terminalHealthy() { return lastSnapshotOk; }
 
 function classify(windows) {
   const now = Date.now();
