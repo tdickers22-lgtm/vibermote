@@ -84,14 +84,33 @@ async function recovery() {
   const restartOnFreeze = /on\b/i.test(freeze) ? true : (/off\b/i.test(freeze) ? false : null);
   const autoLogin = autoUser.trim() ? autoUser.trim() : null;
   const fileVault = /is On/i.test(fv) ? true : (/is Off/i.test(fv) ? false : null);
+
+  /**
+   * Restart-on-freeze is an Intel-era hardware watchdog. Apple Silicon has no
+   * equivalent — `systemsetup -setrestartfreeze` fails with error -99 and
+   * `pmset` does not list an autorestart capability at all. Reporting it as a
+   * missing prerequisite would show a warning the user can never clear, so on
+   * arm64 it is reported as unavailable and left out of the verdict.
+   */
+  const freezeWatchdogSupported = os.arch() !== 'arm64';
+
   return {
     restartOnFreeze,          // null = needs sudo to read
-    autoLogin,                // null = off; a frozen Mac reboots to the login window
+    freezeWatchdogSupported,
+    autoLogin,                // null = off; a restart then stops at the login window
     fileVault,                // on => auto-login impossible at all
-    // Unattended recovery needs the Mac to restart itself AND get back to a
-    // logged-in GUI session, because this server runs as a LaunchAgent and
-    // LaunchAgents do not exist until someone logs in.
-    unattended: Boolean(restartOnFreeze) && Boolean(autoLogin),
+    /**
+     * Can the Mac get back to a state where this server is running, without a
+     * human? That needs a logged-in GUI session, because this runs as a
+     * LaunchAgent and LaunchAgents do not exist until someone logs in. Where
+     * the freeze watchdog exists it is also required; where it does not, a
+     * genuine hang needs the power button and no setting changes that.
+     */
+    unattended: Boolean(autoLogin)
+      && (!freezeWatchdogSupported || Boolean(restartOnFreeze)),
+    hangRecovery: freezeWatchdogSupported
+      ? (restartOnFreeze ? 'automatic' : 'off')
+      : 'needs the power button (no watchdog on Apple Silicon)',
   };
 }
 
