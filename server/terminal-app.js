@@ -15,8 +15,10 @@
  */
 
 import { execFile } from 'node:child_process';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { PROJECT_ROOT } from './config.js';
+import { looksLikeWaiting } from './waiting.js';
 import { log } from './util.js';
 
 const SNAPSHOT = path.join(PROJECT_ROOT, 'scripts', 'terminal-snapshot.js');
@@ -71,11 +73,11 @@ const CACHE_MS = 2000;
 let cached = { at: 0, windows: [] };
 let inFlight = null;
 
-function runSnapshot() {
+function runSnapshot(extra = []) {
   return new Promise((resolve) => {
     execFile(
       '/usr/bin/osascript',
-      ['-l', 'JavaScript', SNAPSHOT],
+      ['-l', 'JavaScript', SNAPSHOT, ...extra],
       { timeout: 10_000, maxBuffer: 8 * 1024 * 1024 },
       (err, stdout) => {
         if (err) {
@@ -98,12 +100,60 @@ function runSnapshot() {
   });
 }
 
-export async function snapshotWindows({ force = false } = {}) {
+/* ------------------------------------------------------ what is it doing? */
+
+/** How long a screen must sit still before stillness means anything. */
+const QUIET_MS = 45_000;
+/**
+ * If nothing sampled this window for longer than this, stillness cannot be
+ * inferred: we simply were not watching. The clock restarts rather than
+ * claiming a window has been quiet for the whole gap, which would announce
+ * "waiting for you" the instant you opened the app.
+ */
+const STALE_MS = 20_000;
+
+/** window id -> { hash, changedAt, seenAt, state } */
+const states = new Map();
+
+function classify(windows) {
+  const now = Date.now();
+  const seen = new Set();
+  for (const w of windows) {
+    seen.add(w.id);
+    const screen = w.screen || '';
+    const hash = crypto.createHash('sha1').update(screen).digest('base64');
+    const prev = states.get(w.id);
+
+    let changedAt = now;
+    if (prev && now - prev.seenAt <= STALE_MS && prev.hash === hash) {
+      changedAt = prev.changedAt;                 // unchanged since we last looked
+    }
+
+    const stillFor = now - changedAt;
+    // 'working' until proven otherwise. Being wrong in this direction costs
+    // nothing; the opposite trains you to ignore the badge.
+    let state = 'working';
+    if (stillFor >= QUIET_MS) state = looksLikeWaiting(screen) ? 'waiting' : 'idle';
+
+    states.set(w.id, { hash, changedAt, seenAt: now, state });
+    w.state = state;
+    w.stillFor = stillFor;
+  }
+  for (const id of [...states.keys()]) if (!seen.has(id)) states.delete(id);
+  return windows;
+}
+
+export async function snapshotWindows({ force = false, light = false } = {}) {
+  // A light snapshot has no cwd or process chain, so it must never land in the
+  // cache the API serves from. It exists purely to keep the state machine fed.
+  if (light) return classify(await runSnapshot(['light']));
+
   const now = Date.now();
   if (!force && now - cached.at < CACHE_MS) return cached.windows;
   if (inFlight) return inFlight;
   inFlight = runSnapshot()
     .then((windows) => {
+      classify(windows);
       cached = { at: Date.now(), windows };
       return windows;
     })
@@ -167,6 +217,8 @@ export async function listTerminalWindows({ force = false } = {}) {
     cli: w.cli,
     cwd: w.cwd,
     minimized: w.minimized,
+    state: w.state || 'working',   // working | waiting | idle
+    stillFor: w.stillFor || 0,
     screen: w.screen
   }));
 }

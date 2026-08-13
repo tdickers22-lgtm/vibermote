@@ -265,3 +265,29 @@
 }
 .terminals-new-row { display: flex; gap: 8px; }
 .terminals-new-row button { flex: 1 1 0; }
+
+/* ------------------------------------------------- blocked on you
+
+   The signal the whole list exists for: with six agents running you should be
+   able to tell at a glance which two are waiting on you rather than reading
+   six screens. Computed server-side by the same classifier that decides
+   whether to send a notification, so the badge and the buzz always agree. */
+
+.twin-needs {
+  border-color: #febc2e;
+  box-shadow: 0 0 0 1px #febc2e, 0 8px 22px rgba(0, 0, 0, 0.45);
+}
+
+.twin-state {
+  flex: none;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #1e1e1e;
+  background: #febc2e;
+  border-radius: 4px;
+  padding: 2px 5px;
+}
+
+.appbar-count.needs { color: #febc2e; }

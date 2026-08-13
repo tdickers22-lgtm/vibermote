@@ -16,7 +16,7 @@
 
 ObjC.import('Cocoa');
 
-function main() {
+function main(light) {
   const term = Application('Terminal');
   if (!isRunning('com.apple.Terminal')) return { ok: true, windows: [] };
 
@@ -33,7 +33,9 @@ function main() {
   // runs to megabytes per window, which is far too much to ship on every poll.
   const screens = bulk(() => term.windows.selectedTab.contents(), ids.length, '');
 
-  const cwds = ttyCwdMap();
+  // The watcher only needs screens, and ttyCwdMap() is the expensive half of
+  // this script (a ps sweep plus lsof). Skip it when the caller says so.
+  const cwds = light ? {} : ttyCwdMap();
   const home = ObjC.unwrap($.NSHomeDirectory());
 
   const windows = ids.map((id, i) => {
@@ -143,9 +145,9 @@ function ttyCwdMap() {
   return out;
 }
 
-function run() {
+function run(argv) {
   try {
-    return JSON.stringify(main());
+    return JSON.stringify(main((argv || []).indexOf('light') >= 0));
   } catch (err) {
     return JSON.stringify({ ok: false, error: String(err && err.message || err) });
   }

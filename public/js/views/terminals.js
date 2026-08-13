@@ -97,6 +97,12 @@ export function createTerminalsView() {
     title.className = 'twin-title';
     title.textContent = (withClose ? w.title : w.label) || w.label || 'Terminal';
     bar.append(dots, title);
+    if (w.state === 'waiting') {
+      const chip = document.createElement('span');
+      chip.className = 'twin-state';
+      chip.textContent = 'needs you';
+      bar.append(chip);
+    }
     if (withClose) {
       const close = document.createElement('button');
       close.type = 'button';
@@ -116,6 +122,7 @@ export function createTerminalsView() {
   function card(w) {
     const el = document.createElement('article');
     el.className = 'twin';
+    if (w.state === 'waiting') el.classList.add('twin-needs');
     if (w.minimized) el.classList.add('twin-min');
     el.dataset.id = w.id;
     const screen = document.createElement('pre');
@@ -132,7 +139,12 @@ export function createTerminalsView() {
       renderMessage(loadedOnce ? 'No Terminal windows are open on the Mac.' : 'Loading…');
       return;
     }
-    if (countEl) countEl.textContent = ` ${windows.length}`;
+    // The useful number is how many are blocked on you, not how many exist.
+    const needs = windows.filter((w) => w.state === 'waiting').length;
+    if (countEl) {
+      countEl.textContent = needs ? ` ${needs} need you` : ` ${windows.length}`;
+      countEl.classList.toggle('needs', needs > 0);
+    }
     body.textContent = '';
 
     let lastGroup = null;

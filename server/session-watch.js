@@ -31,6 +31,8 @@ import { KINDS, DEFAULT_KIND, kindFromTmuxName } from './kinds.js';
 import { getMeta } from './meta.js';
 import { notifySessionEvent, forgetSessionState, subscriptionCount } from './push.js';
 import * as tmuxApi from './tmux.js';
+import { looksLikeWaiting, tailOf } from './waiting.js';
+import { snapshotWindows } from './terminal-app.js';
 import { log } from './util.js';
 
 /**
@@ -66,40 +68,6 @@ const SHELL_COMMANDS = new Set([
  */
 const EXIT_SENTINEL = /exited with status (\d+)/;
 
-/**
- * Tails that mean "a human has to do something".
- *
- * These are matched against the last few non-empty lines of the pane, and only
- * ever consulted after the screen has already been still for PUSH_QUIET_MS with
- * nobody watching. They are a filter on an existing candidate, not a detector:
- * a session that goes quiet without matching any of them produces silence,
- * which is the failure mode to prefer.
- */
-const WAITING_PATTERNS = [
-  /\?\s*for shortcuts/i,               // Claude Code / Codex idle input box
-  /\bdo you want to\b/i,               // Claude Code permission prompt
-  /\bwaiting for (?:your )?input\b/i,
-  /\(y(?:es)?\/n(?:o)?\)/i,
-  /\[y\/n\]/i,
-  /^\s*(?:[❯>*]\s*)?[1-9][.)]\s*(?:yes|no|allow|deny|approve|reject)\b/im,
-  /\bpress (?:enter|any key|return)\b/i,
-  /\b(?:continue|proceed|overwrite|confirm)\?\s*$/im,
-  /\b(?:password|passphrase)\s*:\s*$/im,
-  /^\s*[>❯]\s*$/m,                     // an empty prompt box on its own line
-  /[$%#❯➜]\s*$/,                       // a plain shell prompt at the very end
-];
-
-/**
- * Tails that mean the opposite — the tool is working and merely rendered a
- * static frame. A veto, because "it is still thinking" is the single most
- * expensive false positive: it trains the user to ignore the notification.
- */
-const BUSY_PATTERNS = [
-  /\besc to interrupt\b/i,
-  /\bctrl\+c to (?:stop|cancel|interrupt)\b/i,
-  /\brunning\.{3}/i,
-  /\bthinking\b/i,
-];
 
 /** tmux name -> observed state */
 const watched = new Map();
@@ -135,22 +103,6 @@ function kindLabelFor(name) {
   return KINDS[kindId]?.displayName || '';
 }
 
-/** The last few non-empty lines, which is where every prompt in practice lives. */
-function tailOf(pane, lines = 12) {
-  return pane
-    .split('\n')
-    .map((line) => line.replace(/\s+$/, ''))
-    .filter((line) => line.trim())
-    .slice(-lines)
-    .join('\n');
-}
-
-function looksLikeWaiting(pane) {
-  const tail = tailOf(pane);
-  if (!tail) return false;
-  if (BUSY_PATTERNS.some((re) => re.test(tail))) return false;
-  return WAITING_PATTERNS.some((re) => re.test(tail));
-}
 
 /* ------------------------------------------------------------------ *
  * The sweep
@@ -165,6 +117,15 @@ async function sweep() {
     if (watched.size) watched.clear();
     primed = false;
     return;
+  }
+
+  // Terminal.app windows are watched on the same tick. Both sweeps sit below
+  // the subscriptionCount() gate above, so neither costs anything until
+  // notifications are actually switched on.
+  try {
+    await sweepTerminals();
+  } catch (err) {
+    log.debug('terminal sweep failed:', err.message);
   }
 
   const listing = await tmuxApi.listSessions();
@@ -287,6 +248,75 @@ async function sweep() {
   }
 
   primed = true;
+}
+
+/* ------------------------------------------------------------------ *
+ * Terminal.app windows
+ *
+ * The sweep above only sees tmux. On a machine where the agents were started
+ * by hand in Terminal — which is the normal case — it therefore watches
+ * nothing, and notifications are switched on to no effect. This covers those.
+ *
+ * Deliberately narrower than the tmux watcher: a Terminal window closing is
+ * something you did on purpose, so it never notifies. Only "this is waiting on
+ * you" and "the tool you were running exited" are worth a buzz.
+ * ------------------------------------------------------------------ */
+
+/** window id -> { armed, cli, seen, name } */
+const watchedTerms = new Map();
+
+/** Terminal titles read "<dir> — <task> — <processes> — <cols>x<rows>". */
+function termName(w) {
+  const first = String(w.title || '').split('—')[0].trim();
+  return first || 'Terminal';
+}
+
+async function sweepTerminals() {
+  const windows = await snapshotWindows({ light: true });
+  const present = new Set(windows.map((w) => w.id));
+  for (const id of [...watchedTerms.keys()]) {
+    if (!present.has(id)) watchedTerms.delete(id);
+  }
+
+  for (const w of windows) {
+    let st = watchedTerms.get(w.id);
+    if (!st) {
+      // Never notify about a window the first time it is seen: it may have been
+      // sitting at a prompt since long before notifications were enabled.
+      watchedTerms.set(w.id, { armed: false, cli: w.cli, seen: true, name: termName(w) });
+      continue;
+    }
+    st.name = termName(w);
+
+    // The tool that was running is gone: it finished.
+    if (st.cli && !w.cli) {
+      st.cli = w.cli;
+      st.armed = false;
+      await fireTerm(w.id, st, 'exited', { status: null });
+      continue;
+    }
+    st.cli = w.cli;
+
+    // Anything moving re-arms the detector; it fires once per still period.
+    if (w.state === 'working') { st.armed = true; continue; }
+    if (w.state !== 'waiting' || !st.armed) continue;
+    st.armed = false;
+    await fireTerm(w.id, st, 'waiting');
+  }
+}
+
+async function fireTerm(id, state, type, detail) {
+  try {
+    await notifySessionEvent({
+      type,
+      sessionId: `term:${id}`,
+      projectName: state.name,
+      kindLabel: state.cli || 'Terminal',
+      detail,
+    });
+  } catch (err) {
+    log.warn(`session-watch could not notify (${type} on window ${id}): ${err.message}`);
+  }
 }
 
 async function fire(name, state, type, detail) {
