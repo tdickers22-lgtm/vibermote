@@ -38,7 +38,7 @@ import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { handleAssistantApi } from './assistant.js';
-import { listTerminalWindows, sendInput, openWindow, terminalHealthy } from './terminal-app.js';
+import { listTerminalWindows, sendInput, openWindow, windowAction, terminalHealthy } from './terminal-app.js';
 import { readVitals, restartMac } from './vitals.js';
 import { listDialogs, clickDialog } from './dialogs.js';
 import { holdAwake, releaseAwake, awakeStatus } from './awake.js';
@@ -450,6 +450,24 @@ async function handleApi(req, res, url, pathname, bindInfo) {
       windowId, mode, payload, submit: body.submit !== false,
     });
     sendJson(res, result.ok ? 200 : 500, result);
+    return;
+  }
+
+  /**
+   * Act on one window: close, minimize, restore, front, zoom, scrollback,
+   * clear, signal, newtab. Same power the API already grants, aimed at a
+   * window rather than a shell.
+   */
+  if (pathname === '/api/terminal-windows/action' && method === 'POST') {
+    const body = await readBody(req);
+    const windowId = Number(body.windowId ?? body.id);
+    const action = firstString(body.action);
+    if (!Number.isFinite(windowId) || !action) {
+      sendJson(res, 400, { error: 'windowId and action are required' });
+      return;
+    }
+    const result = await windowAction({ windowId, action, arg: body.arg ?? '' });
+    sendJson(res, result.ok ? 200 : 409, result);
     return;
   }
 

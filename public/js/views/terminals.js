@@ -260,6 +260,11 @@ export function createTerminalsView() {
       chip.className = 'twin-state';
       chip.textContent = 'needs you';
       bar.append(chip);
+    } else if (w.busy) {
+      const chip = document.createElement('span');
+      chip.className = 'twin-state twin-state-busy';
+      chip.textContent = 'running';
+      bar.append(chip);
     }
     if (withClose) {
       const close = document.createElement('button');
@@ -419,11 +424,41 @@ export function createTerminalsView() {
       await sendText(w, text);
     });
 
+    // Everything you could do to this window standing at the Mac.
+    const acts = document.createElement('div');
+    acts.className = 'twin-acts';
+    const ACTIONS = [
+      ['Scrollback', () => showScrollback(w)],
+      ['Interrupt', () => act(w, 'signal', 'INT')],
+      ['Kill', async () => {
+        const go = await confirmSheet({
+          title: 'Kill the running job',
+          message: 'Sends SIGKILL. Anything unsaved in that process is lost.',
+          confirmLabel: 'Kill', danger: true,
+        });
+        if (go) await act(w, 'signal', 'KILL');
+      }],
+      ['Clear', () => act(w, 'clear')],
+      ['New tab', () => act(w, 'newtab')],
+      [w.minimized ? 'Restore' : 'Minimise',
+        () => act(w, w.minimized ? 'restore' : 'minimize')],
+      ['Show on Mac', () => act(w, 'front')],
+      ['Close', () => closeWindow(w)],
+    ];
+    for (const [label, fn] of ACTIONS) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = label === 'Close' || label === 'Kill' ? 'twin-act twin-act-danger' : 'twin-act';
+      b.textContent = label;
+      b.addEventListener('click', fn);
+      acts.append(b);
+    }
+
     const foot = document.createElement('p');
     foot.className = 'twin-foot';
     foot.textContent = w.cwd ? `${w.cwd} — typing focuses this window on the Mac` : w.group;
 
-    win.append(titleBar(w, { withClose: true }), screen, keys, form, foot);
+    win.append(titleBar(w, { withClose: true }), screen, keys, form, acts, foot);
     el.append(win);
     screen.scrollTop = screen.scrollHeight;
   }
@@ -458,6 +493,54 @@ export function createTerminalsView() {
       toast(err.message || 'Could not send', { error: true });
     } finally {
       sending = false;
+    }
+  }
+
+  /* ------------------------------------------------------- window actions */
+
+  async function act(w, action, arg = '') {
+    if (sending) return null;
+    sending = true;
+    try {
+      const r = await api.terminalAction({ windowId: w.windowId, action, arg });
+      await afterSend();
+      return r;
+    } catch (err) {
+      toast(err.message || `Could not ${action}`, { error: true });
+      return null;
+    } finally {
+      sending = false;
+    }
+  }
+
+  /**
+   * Closing a window with something running makes Terminal ask first, which
+   * from here looks like nothing happening. The server reports that, so the
+   * question gets asked here instead of being silently swallowed.
+   */
+  async function closeWindow(w) {
+    const r = await act(w, 'close');
+    if (r && r.blocked) {
+      const go = await confirmSheet({
+        title: 'Something is running',
+        message: (r.sheet?.text?.[1]) || 'Closing this window will terminate the running process.',
+        confirmLabel: 'Close anyway',
+        danger: true,
+      });
+      if (go) await act(w, 'close', 'force');
+      else await act(w, 'close', 'cancel').catch(() => {});
+    }
+    if (zoomedId === w.id) closeZoom();
+  }
+
+  async function showScrollback(w) {
+    const r = await act(w, 'scrollback', '600');
+    if (!r || !r.ok) return;
+    const pre = document.querySelector('#terminals-zoom .twin-screen');
+    if (pre) {
+      pre.textContent = r.text || '(empty)';
+      pre.scrollTop = pre.scrollHeight;
+      toast(`Showing ${Math.min(600, r.lines)} of ${r.lines} lines`);
     }
   }
 

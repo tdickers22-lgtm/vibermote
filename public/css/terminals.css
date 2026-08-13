@@ -398,3 +398,31 @@
   color: #28c840;
   border-color: rgba(40, 200, 64, 0.5);
 }
+
+/* Window actions: what you could do standing at the Mac. Scrolls sideways
+   rather than wrapping, so the row never pushes the screen off a phone. */
+.twin-acts {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px;
+  background: #232326;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+.twin-act {
+  flex: none;
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.07);
+  color: #e6e6e6;
+  font-size: 12px;
+  padding: 6px 11px;
+  border-radius: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.twin-act:active { background: rgba(255, 255, 255, 0.2); }
+.twin-act-danger { color: #ff8a80; border-color: rgba(255, 95, 87, 0.5); }
+
+.twin-state-busy { background: #28c840; color: #10240f; }

@@ -229,6 +229,15 @@ export const api = {
     return request('/api/terminal-windows', { method: 'POST', body: { cwd, command, force } });
   },
 
+  /**
+   * Act on a Terminal window: close / minimize / restore / front / zoom /
+   * scrollback / clear / signal / newtab.
+   */
+  terminalAction: ({ windowId, action, arg = '' }) =>
+    request('/api/terminal-windows/action', {
+      method: 'POST', body: { windowId, action, arg }, timeout: 30000,
+    }),
+
   /** Modal dialogs blocking the Mac, and the buttons they offer. */
   dialogs: () => request('/api/dialogs', { timeout: 25000 }),
 

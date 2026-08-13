@@ -281,7 +281,7 @@
 /* ------------------------------------------------------------
    Bottom sheet
    ------------------------------------------------------------ */
-.sheet-host { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+.sheet-host { position: fixed; inset: 0; z-index: 90; pointer-events: none; }
 .sheet-host:empty { display: none; }
 
 .sheet-backdrop {

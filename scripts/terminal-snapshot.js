@@ -32,6 +32,9 @@ function main(light) {
   // `contents` is the visible screen. `history` is the entire scrollback and
   // runs to megabytes per window, which is far too much to ship on every poll.
   const screens = bulk(() => term.windows.selectedTab.contents(), ids.length, '');
+  // Terminal's own answer to "is something running in here", which beats any
+  // amount of guessing from the text on screen.
+  const busy = bulk(() => term.windows.selectedTab.busy(), ids.length, false);
 
   // The watcher only needs screens, and ttyCwdMap() is the expensive half of
   // this script (a ps sweep plus lsof). Skip it when the caller says so.
@@ -49,6 +52,7 @@ function main(light) {
       cli: cliFor(procs[i]),
       processes: procs[i] || [],
       minimized: Boolean(mini[i]),
+      busy: Boolean(busy[i]),
       screen: trimBlank(String(screens[i] || ''))
     };
   });

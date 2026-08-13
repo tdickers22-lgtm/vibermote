@@ -24,6 +24,7 @@ import { log } from './util.js';
 const SNAPSHOT = path.join(PROJECT_ROOT, 'scripts', 'terminal-snapshot.js');
 const INPUT = path.join(PROJECT_ROOT, 'scripts', 'terminal-input.js');
 const OPEN = path.join(PROJECT_ROOT, 'scripts', 'terminal-open.js');
+const WINDOW = path.join(PROJECT_ROOT, 'scripts', 'terminal-window.js');
 
 /** Run one of the osascript helpers and parse its JSON reply. */
 function runScript(file, args, timeout = 15_000) {
@@ -53,6 +54,17 @@ export async function sendInput({ windowId, mode = 'text', payload = '', submit 
   if (mode === 'text' && submit) args.push('submit');
   const result = await runScript(INPUT, args);
   cached = { at: 0, windows: cached.windows };
+  return result;
+}
+
+/**
+ * Everything else you could do to a window at the Mac: close, minimise,
+ * restore, bring to front, zoom, read real scrollback, clear, signal the
+ * running job, open a tab. See scripts/terminal-window.js.
+ */
+export async function windowAction({ windowId, action, arg = '' }) {
+  const result = await runScript(WINDOW, [action, windowId, arg], 25_000);
+  cached = { at: 0, windows: cached.windows };   // the Mac just changed
   return result;
 }
 
@@ -143,7 +155,14 @@ function classify(windows) {
     // 'working' until proven otherwise. Being wrong in this direction costs
     // nothing; the opposite trains you to ignore the badge.
     let state = 'working';
-    if (stillFor >= QUIET_MS) state = looksLikeWaiting(screen) ? 'waiting' : 'idle';
+    if (stillFor >= QUIET_MS) {
+      // Terminal says whether a foreground job exists. A still screen with
+      // nothing running is idle, full stop -- no text heuristic needed. Only
+      // when something IS running does the screen have to be read to tell
+      // "asking me something" from "working quietly".
+      if (w.busy === false) state = 'idle';
+      else state = looksLikeWaiting(screen) ? 'waiting' : 'idle';
+    }
 
     states.set(w.id, { hash, changedAt, seenAt: now, state });
     w.state = state;
@@ -227,6 +246,7 @@ export async function listTerminalWindows({ force = false } = {}) {
     cli: w.cli,
     cwd: w.cwd,
     minimized: w.minimized,
+    busy: Boolean(w.busy),
     state: w.state || 'working',   // working | waiting | idle
     stillFor: w.stillFor || 0,
     screen: w.screen
