@@ -48,11 +48,15 @@ export const PUSH_SUBSCRIPTIONS_PATH = path.join(PROJECT_ROOT, '.push-subscripti
 /**
  * VAPID `sub` claim — a contact for whoever operates this push sender. RFC 8292
  * requires a `mailto:` or `https:` URL, and Apple rejects a token without one.
- * It is not verified by anyone, but it must be well-formed, so it defaults to
- * this deployment's own public URL rather than to an invented address.
+ * Nobody verifies it, but it must be well-formed.
+ *
+ * This defaults to the project's own URL, not to the machine's. A tailnet
+ * hostname is private infrastructure, and this value travels to Apple's and
+ * Google's push endpoints on every notification, so baking one in would leak it
+ * off the tailnet. Set `CCR_VAPID_SUBJECT` if you want your own contact there.
  */
 export const VAPID_SUBJECT =
-  process.env.CCR_VAPID_SUBJECT || 'https://tobias-macbook-air-2025.tail47b83f.ts.net';
+  process.env.CCR_VAPID_SUBJECT || 'https://github.com/tdickers22-lgtm/vibermote';
 
 /* ------------------------------------------------------------------ *
  * Notification tuning
