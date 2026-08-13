@@ -40,6 +40,7 @@ import path from 'node:path';
 import { handleAssistantApi } from './assistant.js';
 import { listTerminalWindows, sendInput, openWindow, terminalHealthy } from './terminal-app.js';
 import { readVitals, restartMac } from './vitals.js';
+import { listDialogs, clickDialog } from './dialogs.js';
 import { checkAuth } from './auth.js';
 import { PROJECT_ROOT, TMUX_BIN, HARDENED_PATH, LOGIN_SHELL, SAVED_COMMANDS_PATH } from './config.js';
 import { listAllSessions, findSession, listProjects, parseId } from './discovery.js';
@@ -364,6 +365,27 @@ async function handleApi(req, res, url, pathname, bindInfo) {
    */
   if (pathname === '/api/vitals' && method === 'GET') {
     sendJson(res, 200, await readVitals({ terminalOk: terminalHealthy() }));
+    return;
+  }
+
+  /** Modal dialogs waiting on a click nobody is there to give. */
+  if (pathname === '/api/dialogs' && method === 'GET') {
+    const dialogs = await listDialogs({ force: url.searchParams.get('force') === '1' });
+    sendJson(res, 200, { dialogs, count: dialogs.length });
+    return;
+  }
+
+  /** Press a button on one of them. */
+  if (pathname === '/api/dialogs/click' && method === 'POST') {
+    const body = await readBody(req);
+    const app = firstString(body.app);
+    const button = firstString(body.button);
+    if (!app || !button) {
+      sendJson(res, 400, { error: 'app and button are required' });
+      return;
+    }
+    const result = await clickDialog({ app, window: body.window || '', button });
+    sendJson(res, result.ok ? 200 : 409, result);
     return;
   }
 

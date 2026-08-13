@@ -353,3 +353,42 @@
   padding: 3px 9px;
   cursor: pointer;
 }
+
+/* ------------------------------------------------------- blocked dialogs
+
+   Something on the Mac is waiting on a click. This sits above the health line
+   because no load average matters while a modal is holding a job hostage. */
+
+.dlgs { border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
+
+.dlg {
+  padding: 10px 12px;
+  background: rgba(254, 188, 46, 0.10);
+  border-left: 3px solid #febc2e;
+}
+.dlg + .dlg { border-top: 1px solid rgba(255, 255, 255, 0.06); }
+
+.dlg-app {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #febc2e;
+  margin-bottom: 3px;
+}
+.dlg-msg { font-size: 12px; color: #e6e6e6; line-height: 1.35; }
+.dlg-note { margin-top: 6px; font-size: 11px; color: #b9b9be; font-style: italic; }
+
+.dlg-btns { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
+.dlg-btn {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.10);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 13px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.dlg-btn:disabled { opacity: 0.45; }

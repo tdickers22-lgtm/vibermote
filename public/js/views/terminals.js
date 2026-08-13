@@ -57,6 +57,7 @@ export function createTerminalsView() {
   let zoomedId = null;
   let sending = false;
   let vitals = null;
+  let dialogs = [];
   /**
    * When the Mac last answered. A frozen or dead Mac cannot tell you it is in
    * trouble -- the server is inside the thing that froze -- so the only honest
@@ -93,7 +94,12 @@ export function createTerminalsView() {
 
   async function loadVitals() {
     try {
-      vitals = await api.vitals();
+      const [v, d] = await Promise.all([
+        api.vitals(),
+        api.dialogs().catch(() => null),
+      ]);
+      vitals = v;
+      if (d) dialogs = d.dialogs || [];
       lastContactAt = Date.now();
     } catch {
       /* leave the previous reading; the banner is driven by lastContactAt */
@@ -117,7 +123,57 @@ export function createTerminalsView() {
     return d ? `${d}d ${h}h` : `${h}h`;
   }
 
+  /**
+   * A dialog waiting on a click is the most actionable thing the app can show:
+   * something on the Mac is blocked until somebody answers it, and from here
+   * nobody can see it. Rendered above the health line because it outranks any
+   * number on it.
+   */
+  function renderDialogs() {
+    const host = document.getElementById('terminals-dialogs');
+    if (!host) return;
+    host.textContent = '';
+    if (!dialogs.length) { host.className = 'dlgs health-hide'; return; }
+    host.className = 'dlgs';
+
+    for (const d of dialogs) {
+      const row = h('div', { class: 'dlg' });
+      row.append(h('div', { class: 'dlg-app' }, d.app));
+      const msg = (d.text && d.text[0]) || d.window || 'is waiting for an answer';
+      row.append(h('div', { class: 'dlg-msg' }, msg));
+
+      if (d.human) {
+        // A permission prompt cannot be clicked by any script -- TCC enforces
+        // that below SIP. Saying so is the only honest thing to render.
+        row.append(h('div', { class: 'dlg-note' },
+          'Needs you at the Mac — permission prompts cannot be answered remotely.'));
+      } else {
+        const btns = h('div', { class: 'dlg-btns' });
+        for (const label of d.buttons) {
+          btns.append(h('button', {
+            class: 'dlg-btn', type: 'button',
+            onClick: async (e) => {
+              e.target.disabled = true;
+              try {
+                await api.answerDialog({ app: d.app, window: d.window, button: label });
+                dialogs = dialogs.filter((x) => x !== d);
+                renderDialogs();
+                setTimeout(() => loadVitals(), 800);
+              } catch (err) {
+                toast(err.message || 'Could not press that', { error: true });
+                e.target.disabled = false;
+              }
+            },
+          }, label));
+        }
+        row.append(btns);
+      }
+      host.append(row);
+    }
+  }
+
   function renderHealth() {
+    renderDialogs();
     const el = document.getElementById('terminals-health');
     if (!el) return;
     el.textContent = '';

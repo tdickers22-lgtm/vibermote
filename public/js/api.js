@@ -229,6 +229,12 @@ export const api = {
     return request('/api/terminal-windows', { method: 'POST', body: { cwd, command, force } });
   },
 
+  /** Modal dialogs blocking the Mac, and the buttons they offer. */
+  dialogs: () => request('/api/dialogs', { timeout: 25000 }),
+
+  answerDialog: ({ app, window = '', button }) =>
+    request('/api/dialogs/click', { method: 'POST', body: { app, window, button } }),
+
   /** How the Mac is holding up, and whether it could recover from a freeze. */
   vitals() {
     return request('/api/vitals', { timeout: 8000 });
