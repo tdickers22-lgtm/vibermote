@@ -29,7 +29,7 @@
 <link rel="stylesheet" href="./css/sessions.css">
 <link rel="stylesheet" href="./css/launcher.css">
 <link rel="stylesheet" href="./css/usage.css">
-<link rel="stylesheet" href="./css/wall.css">
+<link rel="stylesheet" href="./css/terminals.css">
 <link rel="stylesheet" href="./css/terminal.css">
 </head>
 <body>
@@ -142,21 +142,21 @@
     </section>
 
     <!-- ---------- WALL (mirror of the Mac's Terminal windows) ---------- -->
-    <section class="view view-wall" id="view-wall" hidden>
+    <section class="view view-terminals" id="view-terminals" hidden>
       <header class="appbar">
         <div class="appbar-main">
-          <h1 class="appbar-title">Wall<span class="appbar-count" id="wall-count"></span></h1>
+          <h1 class="appbar-title">Terminals<span class="appbar-count" id="terminals-count"></span></h1>
           <div class="appbar-actions">
-            <button class="icon-btn" id="btn-wall-refresh" aria-label="Refresh"></button>
+            <button class="icon-btn" id="btn-terminals-refresh" aria-label="Refresh"></button>
+            <button class="icon-btn icon-btn-accent" id="btn-terminals-new" aria-label="New window"></button>
           </div>
         </div>
       </header>
-      <div class="wall-scroll scrollable" id="wall-body"></div>
+      <div class="terminals-scroll scrollable" id="terminals-body"></div>
     </section>
 
     <nav class="tabbar" id="tabbar" aria-label="Main">
-      <button class="tab" type="button" data-tab="sessions" aria-label="Sessions"></button>
-      <button class="tab" type="button" data-tab="wall" aria-label="Terminal wall"></button>
+      <button class="tab" type="button" data-tab="terminals" aria-label="Terminals"></button>
       <button class="tab" type="button" data-tab="assistant" aria-label="Assistant"></button>
       <button class="tab" type="button" data-tab="usage" aria-label="Token usage"></button>
     </nav>

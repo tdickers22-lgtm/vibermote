@@ -16,7 +16,7 @@ import {
 } from './api.js';
 import { applyServerKinds, getKind } from './kinds.js';
 import { createSessionsView } from './views/sessions.js';
-import { createWallView } from './views/wall.js';
+import { createTerminalsView } from './views/terminals.js';
 import { createUsageView } from './views/usage.js';
 import { createAssistantView } from './views/assistant.js';
 import { createKeybar } from './keybar.js';
@@ -42,14 +42,13 @@ const views = {
 
 /** The tabbed screens inside `#shell`, keyed by their `data-tab` value. */
 const tabViews = {
-  sessions: document.getElementById('view-sessions'),
-  wall: document.getElementById('view-wall'),
+  terminals: document.getElementById('view-terminals'),
   assistant: document.getElementById('view-assistant'),
   usage: document.getElementById('view-usage'),
 };
 
-const TAB_ICONS = { sessions: 'terminal', wall: 'panes', assistant: 'sparkle', usage: 'chart' };
-const TAB_LABELS = { sessions: 'Sessions', wall: 'Wall', assistant: 'Assistant', usage: 'Usage' };
+const TAB_ICONS = { terminals: 'terminal', assistant: 'sparkle', usage: 'chart' };
+const TAB_LABELS = { terminals: 'Terminals', assistant: 'Assistant', usage: 'Usage' };
 
 const els = {
   tokenForm: document.getElementById('token-form'),
@@ -90,7 +89,7 @@ let current = null;      // the session object currently shown in the term view
 let term = null;         // its SessionTerm
 let unsubscribe = [];    // listeners bound to the current SessionTerm
 let route = 'token';
-let lastTab = 'sessions'; // the tab to come back to when the terminal closes
+let lastTab = 'terminals'; // the tab to come back to when the terminal closes
 
 /**
  * Terminals the user has open, least-recently-used first.
@@ -111,13 +110,13 @@ const resumedLive = new Map();
 const resuming = new Map();
 
 const sessionsView = createSessionsView({ onOpen: openSession });
-const wallView = createWallView();
+const terminalsView = createTerminalsView();
 const usageView = createUsageView();
 // Same onOpen contract as the sessions view: the assistant's Run button creates a
 // custom session and hands it back here to open. The model never executes anything.
 const assistantView = createAssistantView({ onOpen: openSession });
 
-const tabViewApis = { sessions: sessionsView, wall: wallView, assistant: assistantView, usage: usageView };
+const tabViewApis = { terminals: terminalsView, assistant: assistantView, usage: usageView };
 
 const keybar = createKeybar(els.keybar, {
   send: (data) => term?.sendRaw(data),

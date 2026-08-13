@@ -20,6 +20,46 @@ import { PROJECT_ROOT } from './config.js';
 import { log } from './util.js';
 
 const SNAPSHOT = path.join(PROJECT_ROOT, 'scripts', 'terminal-snapshot.js');
+const INPUT = path.join(PROJECT_ROOT, 'scripts', 'terminal-input.js');
+const OPEN = path.join(PROJECT_ROOT, 'scripts', 'terminal-open.js');
+
+/** Run one of the osascript helpers and parse its JSON reply. */
+function runScript(file, args, timeout = 15_000) {
+  return new Promise((resolve) => {
+    execFile('/usr/bin/osascript',
+      ['-l', 'JavaScript', file, ...args.map(String)],
+      { timeout, maxBuffer: 4 * 1024 * 1024 },
+      (err, stdout) => {
+        if (err) return resolve({ ok: false, error: err.message });
+        try { resolve(JSON.parse(stdout)); }
+        catch { resolve({ ok: false, error: 'helper returned non-JSON' }); }
+      });
+  });
+}
+
+/**
+ * Type into a Terminal window.
+ *
+ * `mode` is 'text' (optionally submitted with Return) or 'key' for a named key
+ * or control combination. This focuses the window on the Mac before typing —
+ * unavoidable, see scripts/terminal-input.js — so it steals focus from whatever
+ * the Mac was doing. The cache is dropped afterwards so the next poll shows the
+ * result rather than a snapshot taken before the keystrokes landed.
+ */
+export async function sendInput({ windowId, mode = 'text', payload = '', submit = false }) {
+  const args = [windowId, mode, payload];
+  if (mode === 'text' && submit) args.push('submit');
+  const result = await runScript(INPUT, args);
+  cached = { at: 0, windows: cached.windows };
+  return result;
+}
+
+/** Open a new Terminal window on the Mac, optionally in a directory / running a command. */
+export async function openWindow({ cwd = '', command = '' } = {}) {
+  const result = await runScript(OPEN, [cwd, command], 20_000);
+  cached = { at: 0, windows: cached.windows };
+  return result;
+}
 
 /**
  * One osascript run costs ~400ms, most of it interpreter startup and the lsof

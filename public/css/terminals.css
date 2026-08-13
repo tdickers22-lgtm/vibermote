@@ -1,5 +1,5 @@
 /*
- * The wall — cards drawn to read as the Terminal windows they mirror.
+ * Terminals — cards drawn to read as the Terminal windows they mirror.
  *
  * These deliberately do not use the app's surface tokens. Everywhere else the
  * UI should look like Vibermote; here it should look like the Mac, so that
@@ -7,13 +7,13 @@
  * Terminal.app's own default profile.
  */
 
-.wall-scroll {
+.terminals-scroll {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
 }
 
-.wall-empty {
+.terminals-empty {
   margin: 32px 12px;
   text-align: center;
   color: var(--muted, #8a8a8e);
@@ -164,3 +164,104 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ------------------------------------------------------- the [hidden] fix
+ * `display: flex` above beats the UA stylesheet's `[hidden] { display: none }`,
+ * so setting el.hidden had no visible effect and the zoom could not be closed.
+ * An explicit rule is required whenever an element with a display rule is
+ * toggled with the hidden attribute. */
+.twin-zoom[hidden] { display: none !important; }
+
+/* ------------------------------------------------------------- composing */
+
+.twin-keys {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 8px 0;
+  background: #2c2c2e;
+}
+.twin-key {
+  flex: none;
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e6e6e6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  padding: 6px 11px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.twin-key:active { background: rgba(255, 255, 255, 0.22); }
+
+.twin-compose {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: #2c2c2e;
+}
+.twin-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: #1e1e1e;
+  color: #e6e6e6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 16px;            /* 16px or iOS zooms the page on focus */
+  padding: 9px 11px;
+}
+.twin-send {
+  flex: none;
+  appearance: none;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent, #e07a3f);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 9px 15px;
+  cursor: pointer;
+}
+.twin-send:disabled { opacity: 0.5; }
+
+/* --------------------------------------------------------- new window */
+
+.terminals-new {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+}
+.terminals-new[hidden] { display: none !important; }
+.terminals-new-card {
+  width: 100%;
+  max-width: 560px;
+  background: #232326;
+  border-radius: 14px 14px 0 0;
+  padding: 16px 14px calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.terminals-new-card h3 { margin: 0 0 2px; font-size: 15px; color: #f0f0f2; }
+.terminals-new-card label { font-size: 11px; color: #9a9aa0; }
+.terminals-new-card input {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: #1a1a1c;
+  color: #e6e6e6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 16px;
+  padding: 9px 11px;
+  width: 100%;
+}
+.terminals-new-row { display: flex; gap: 8px; }
+.terminals-new-row button { flex: 1 1 0; }

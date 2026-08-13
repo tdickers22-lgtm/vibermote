@@ -38,7 +38,7 @@ import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { handleAssistantApi } from './assistant.js';
-import { listTerminalWindows } from './terminal-app.js';
+import { listTerminalWindows, sendInput, openWindow } from './terminal-app.js';
 import { checkAuth } from './auth.js';
 import { PROJECT_ROOT, TMUX_BIN, HARDENED_PATH, LOGIN_SHELL, SAVED_COMMANDS_PATH } from './config.js';
 import { listAllSessions, findSession, listProjects, parseId } from './discovery.js';
@@ -367,6 +367,45 @@ async function handleApi(req, res, url, pathname, bindInfo) {
     const force = url.searchParams.get('force') === '1';
     const windows = await listTerminalWindows({ force });
     sendJson(res, 200, { windows, count: windows.length });
+    return;
+  }
+
+  /**
+   * Type into one of those windows. This is the same power `POST /api/sessions`
+   * already grants — see the banner at the top of this file — aimed at a window
+   * that already exists rather than a new shell.
+   */
+  if (pathname === '/api/terminal-windows/input' && method === 'POST') {
+    const body = await readBody(req);
+    const windowId = Number(body.windowId ?? body.id);
+    if (!Number.isFinite(windowId)) {
+      sendJson(res, 400, { error: 'windowId must be a number' });
+      return;
+    }
+    const mode = body.key ? 'key' : 'text';
+    const payload = String(body.key ?? body.text ?? '');
+    if (mode === 'text' && payload.length > MAX_COMMAND_LENGTH) {
+      sendJson(res, 400, { error: 'text too long' });
+      return;
+    }
+    const result = await sendInput({
+      windowId, mode, payload, submit: body.submit !== false,
+    });
+    sendJson(res, result.ok ? 200 : 500, result);
+    return;
+  }
+
+  /** Open a new Terminal window on the Mac. */
+  if (pathname === '/api/terminal-windows' && method === 'POST') {
+    const body = await readBody(req);
+    const cwd = firstString(body.cwd, body.projectDir) || '';
+    const command = firstString(body.command) || '';
+    if (command.length > MAX_COMMAND_LENGTH) {
+      sendJson(res, 400, { error: 'command too long' });
+      return;
+    }
+    const result = await openWindow({ cwd, command });
+    sendJson(res, result.ok ? 200 : 500, result);
     return;
   }
 

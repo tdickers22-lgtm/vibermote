@@ -206,6 +206,27 @@ export const api = {
   },
 
   /**
+   * Type into one of the Mac's Terminal windows. `text` is typed and, unless
+   * `submit` is false, followed by Return; `key` sends a single named key or
+   * control combination instead ('escape', 'up', 'ctrl+c', …).
+   *
+   * This focuses that window on the Mac in order to type into it, which is
+   * unavoidable for a process Vibermote did not start. See
+   * scripts/terminal-input.js.
+   */
+  sendTerminalInput({ windowId, text, key, submit = true }) {
+    return request('/api/terminal-windows/input', {
+      method: 'POST',
+      body: key ? { windowId, key } : { windowId, text, submit },
+    });
+  },
+
+  /** Open a new Terminal window on the Mac, optionally in a directory. */
+  openTerminalWindow({ cwd = '', command = '' } = {}) {
+    return request('/api/terminal-windows', { method: 'POST', body: { cwd, command } });
+  },
+
+  /**
    * One session by id. Used by the notification deep link, where the id arrives
    * from outside the app and the list may not have loaded yet. A 404 means the
    * session ended while the notification sat on the lock screen, which is an
