@@ -392,3 +392,9 @@
   cursor: pointer;
 }
 .dlg-btn:disabled { opacity: 0.45; }
+
+/* A held sleep assertion is good news, not a warning. */
+.health-note-ok {
+  color: #28c840;
+  border-color: rgba(40, 200, 64, 0.5);
+}

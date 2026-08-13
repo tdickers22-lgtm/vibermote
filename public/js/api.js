@@ -240,6 +240,10 @@ export const api = {
     return request('/api/vitals', { timeout: 8000 });
   },
 
+  /** Hold sleep off for a bounded time, or release it. */
+  keepAwake: ({ on = true, seconds = 3600 } = {}) =>
+    request('/api/system/awake', { method: 'POST', body: { on, seconds } }),
+
   /** Restart the Mac. The caller confirms first; this does not ask. */
   restartMac() {
     return request('/api/system/restart', { method: 'POST', body: { confirm: true } });

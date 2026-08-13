@@ -41,6 +41,7 @@ import { handleAssistantApi } from './assistant.js';
 import { listTerminalWindows, sendInput, openWindow, terminalHealthy } from './terminal-app.js';
 import { readVitals, restartMac } from './vitals.js';
 import { listDialogs, clickDialog } from './dialogs.js';
+import { holdAwake, releaseAwake, awakeStatus } from './awake.js';
 import { checkAuth } from './auth.js';
 import { PROJECT_ROOT, TMUX_BIN, HARDENED_PATH, LOGIN_SHELL, SAVED_COMMANDS_PATH } from './config.js';
 import { listAllSessions, findSession, listProjects, parseId } from './discovery.js';
@@ -364,7 +365,8 @@ async function handleApi(req, res, url, pathname, bindInfo) {
    * its own. See server/vitals.js for what this deliberately cannot tell you.
    */
   if (pathname === '/api/vitals' && method === 'GET') {
-    sendJson(res, 200, await readVitals({ terminalOk: terminalHealthy() }));
+    const v = await readVitals({ terminalOk: terminalHealthy() });
+    sendJson(res, 200, { ...v, awake: awakeStatus() });
     return;
   }
 
@@ -386,6 +388,18 @@ async function handleApi(req, res, url, pathname, bindInfo) {
     }
     const result = await clickDialog({ app, window: body.window || '', button });
     sendJson(res, result.ok ? 200 : 409, result);
+    return;
+  }
+
+  /**
+   * Hold sleep off. A sleeping Mac cannot be reached or woken over the tailnet,
+   * so this is prevention, not recovery. See server/awake.js.
+   */
+  if (pathname === '/api/system/awake' && method === 'POST') {
+    const body = await readBody(req);
+    sendJson(res, 200, body.on === false
+      ? releaseAwake()
+      : holdAwake({ seconds: body.seconds }));
     return;
   }
 

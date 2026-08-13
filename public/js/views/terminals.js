@@ -212,9 +212,12 @@ export function createTerminalsView() {
     );
 
     // Sleep is the quiet killer: the Mac vanishing mid-job looks exactly like a
-    // crash from the phone, and on battery this one idles out after a minute.
-    if (v.power && v.power.onBattery && !v.power.sleepHeld) {
-      el.append(h('span', { class: 'health-note' }, 'sleep not held'));
+    // crash from the phone, and it cannot be woken back over the tailnet.
+    if (v.awake?.holding) {
+      el.append(h('span', { class: 'health-note health-note-ok' },
+        `awake ${Math.round((v.awake.secondsLeft || 0) / 60)}m`));
+    } else if (v.power && v.power.onBattery) {
+      el.append(h('span', { class: 'health-note' }, 'may sleep'));
     }
   }
 
@@ -574,6 +577,23 @@ export function createTerminalsView() {
           // Its own sheet: turning notifications on has to explain iOS's
           // Home-Screen rule, and the permission prompt must come from a tap.
           pushMenuRow(() => { close(); openPushSheet(); }),
+          menuItem(
+            vitals?.awake?.holding ? 'Let it sleep again' : 'Keep the Mac awake',
+            vitals?.awake?.holding
+              ? `Holding for ${Math.round((vitals.awake.secondsLeft || 0) / 60)} more min`
+              : 'Hold sleep off for 4 hours — a sleeping Mac is unreachable',
+            'power',
+            async () => {
+              close();
+              const on = !vitals?.awake?.holding;
+              try {
+                await api.keepAwake({ on, seconds: 4 * 3600 });
+                toast(on ? 'Sleep held off for 4 hours' : 'Sleep hold released');
+                await loadVitals();
+              } catch (err) {
+                toast(err.message || 'Could not change that', { error: true });
+              }
+            }),
           menuItem('Restart the Mac', 'Everything running stops', 'power', async () => {
             close();
             const rec = vitals?.recovery;
