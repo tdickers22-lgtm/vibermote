@@ -70,6 +70,27 @@ else
 fi
 export CCR_PORT
 
+# Wait for Tailscale before giving up on it.
+#
+# This is the difference between auto-login being useful and being a trap. At
+# login launchd starts this agent immediately, while Tailscale's network
+# extension is still coming up, so the interface does not exist yet. The bind
+# address is chosen once and never revisited, so without this the server comes
+# back after every reboot listening on loopback -- running, healthy, and
+# unreachable from the phone. Which is the exact moment you need it.
+if [ -z "${CCR_HOST:-}" ] && [ "$BIND" = "127.0.0.1" ]; then
+  say "no Tailscale address yet; waiting up to ${CCR_TAILSCALE_WAIT:-90}s for the interface..."
+  waited=0
+  while [ "$waited" -lt "${CCR_TAILSCALE_WAIT:-90}" ]; do
+    sleep 2
+    waited=$((waited + 2))
+    if BIND="$(resolve_bind "")" && [ "$BIND" != "127.0.0.1" ]; then
+      say "Tailscale came up after ${waited}s: $BIND"
+      break
+    fi
+  done
+fi
+
 if [ "$BIND" = "127.0.0.1" ]; then
   say "warning: no Tailscale address found, so the server will bind to 127.0.0.1."
   say "         It will work on this Mac but your phone will not reach it."
