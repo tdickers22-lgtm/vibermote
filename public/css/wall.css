@@ -1,0 +1,166 @@
+/*
+ * The wall — cards drawn to read as the Terminal windows they mirror.
+ *
+ * These deliberately do not use the app's surface tokens. Everywhere else the
+ * UI should look like Vibermote; here it should look like the Mac, so that
+ * scrolling the wall feels like scrolling the desktop. The colours are
+ * Terminal.app's own default profile.
+ */
+
+.wall-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 12px calc(24px + env(safe-area-inset-bottom));
+}
+
+.wall-empty {
+  margin: 32px 12px;
+  text-align: center;
+  color: var(--muted, #8a8a8e);
+  font-size: 14px;
+}
+
+/* Group heading: "movievault / claude". Sticky so you always know which
+   project the window you are looking at belongs to. */
+.twin-group {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 18px 2px 8px;
+  padding: 4px 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted, #8a8a8e);
+  background: var(--bg, #16161a);
+}
+.twin-group:first-child { margin-top: 2px; }
+
+/* ------------------------------------------------------------------ window */
+
+.twin {
+  margin: 0 0 14px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #1e1e1e;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
+
+.twin-min { opacity: 0.55; }
+
+.twin-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: linear-gradient(#3a3a3c, #2c2c2e);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+.twin-dots { display: flex; gap: 6px; flex: none; }
+.twin-dots i {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  display: block;
+}
+.twin-dots i:nth-child(1) { background: #ff5f57; }
+.twin-dots i:nth-child(2) { background: #febc2e; }
+.twin-dots i:nth-child(3) { background: #28c840; }
+
+.twin-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e6e6e6;
+}
+
+.twin-badge {
+  flex: none;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #b9b9be;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+/* The screen. Never wraps — a wrapped TUI is unreadable — it scrolls sideways
+   inside its own box instead, so the page itself never scrolls horizontally. */
+.twin-screen {
+  margin: 0;
+  padding: 10px;
+  background: #1e1e1e;
+  color: #d8d8d8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 9px;
+  line-height: 1.32;
+  white-space: pre;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: 190px;
+}
+
+/* ------------------------------------------------------------------- zoom */
+
+.twin-zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom));
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.twin-full {
+  width: 100%;
+  max-width: 900px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  cursor: default;
+}
+
+.twin-screen-full {
+  font-size: 11px;
+  max-height: none;
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.twin-zoom-close {
+  flex: none;
+  appearance: none;
+  border: 0;
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.twin-foot {
+  margin: 0;
+  padding: 7px 10px calc(7px + env(safe-area-inset-bottom));
+  background: #2c2c2e;
+  color: #a0a0a6;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

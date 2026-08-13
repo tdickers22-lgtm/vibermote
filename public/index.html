@@ -29,6 +29,7 @@
 <link rel="stylesheet" href="./css/sessions.css">
 <link rel="stylesheet" href="./css/launcher.css">
 <link rel="stylesheet" href="./css/usage.css">
+<link rel="stylesheet" href="./css/wall.css">
 <link rel="stylesheet" href="./css/terminal.css">
 </head>
 <body>
@@ -140,8 +141,22 @@
       </form>
     </section>
 
+    <!-- ---------- WALL (mirror of the Mac's Terminal windows) ---------- -->
+    <section class="view view-wall" id="view-wall" hidden>
+      <header class="appbar">
+        <div class="appbar-main">
+          <h1 class="appbar-title">Wall<span class="appbar-count" id="wall-count"></span></h1>
+          <div class="appbar-actions">
+            <button class="icon-btn" id="btn-wall-refresh" aria-label="Refresh"></button>
+          </div>
+        </div>
+      </header>
+      <div class="wall-scroll scrollable" id="wall-body"></div>
+    </section>
+
     <nav class="tabbar" id="tabbar" aria-label="Main">
       <button class="tab" type="button" data-tab="sessions" aria-label="Sessions"></button>
+      <button class="tab" type="button" data-tab="wall" aria-label="Terminal wall"></button>
       <button class="tab" type="button" data-tab="assistant" aria-label="Assistant"></button>
       <button class="tab" type="button" data-tab="usage" aria-label="Token usage"></button>
     </nav>

@@ -38,6 +38,7 @@ import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { handleAssistantApi } from './assistant.js';
+import { listTerminalWindows } from './terminal-app.js';
 import { checkAuth } from './auth.js';
 import { PROJECT_ROOT, TMUX_BIN, HARDENED_PATH, LOGIN_SHELL, SAVED_COMMANDS_PATH } from './config.js';
 import { listAllSessions, findSession, listProjects, parseId } from './discovery.js';
@@ -352,6 +353,20 @@ async function handleApi(req, res, url, pathname, bindInfo) {
     }
 
     sendJson(res, 405, { error: `method ${method} not allowed on ${pathname}` });
+    return;
+  }
+
+  /* -------------------- Terminal.app mirror -------------------- */
+  /**
+   * Every Terminal.app window on the Mac, ordered by project then CLI, each
+   * carrying the text currently on its screen. These are mirrors, not sessions:
+   * `attachable` is false because a running process's controlling terminal
+   * cannot be adopted after the fact. See server/terminal-app.js.
+   */
+  if (pathname === '/api/terminal-windows' && method === 'GET') {
+    const force = url.searchParams.get('force') === '1';
+    const windows = await listTerminalWindows({ force });
+    sendJson(res, 200, { windows, count: windows.length });
     return;
   }
 

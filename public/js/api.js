@@ -196,6 +196,16 @@ export const api = {
   },
 
   /**
+   * `GET /api/terminal-windows`. The Mac's real Terminal windows, already
+   * ordered by project then CLI, each carrying the text on its screen. These
+   * are mirrors: none of them can be attached to.
+   */
+  async listTerminalWindows() {
+    const payload = await request('/api/terminal-windows');
+    return Array.isArray(payload?.windows) ? payload.windows : [];
+  },
+
+  /**
    * One session by id. Used by the notification deep link, where the id arrives
    * from outside the app and the list may not have loaded yet. A 404 means the
    * session ended while the notification sat on the lock screen, which is an

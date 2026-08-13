@@ -16,6 +16,7 @@ import {
 } from './api.js';
 import { applyServerKinds, getKind } from './kinds.js';
 import { createSessionsView } from './views/sessions.js';
+import { createWallView } from './views/wall.js';
 import { createUsageView } from './views/usage.js';
 import { createAssistantView } from './views/assistant.js';
 import { createKeybar } from './keybar.js';
@@ -42,12 +43,13 @@ const views = {
 /** The tabbed screens inside `#shell`, keyed by their `data-tab` value. */
 const tabViews = {
   sessions: document.getElementById('view-sessions'),
+  wall: document.getElementById('view-wall'),
   assistant: document.getElementById('view-assistant'),
   usage: document.getElementById('view-usage'),
 };
 
-const TAB_ICONS = { sessions: 'terminal', assistant: 'sparkle', usage: 'chart' };
-const TAB_LABELS = { sessions: 'Sessions', assistant: 'Assistant', usage: 'Usage' };
+const TAB_ICONS = { sessions: 'terminal', wall: 'panes', assistant: 'sparkle', usage: 'chart' };
+const TAB_LABELS = { sessions: 'Sessions', wall: 'Wall', assistant: 'Assistant', usage: 'Usage' };
 
 const els = {
   tokenForm: document.getElementById('token-form'),
@@ -109,12 +111,13 @@ const resumedLive = new Map();
 const resuming = new Map();
 
 const sessionsView = createSessionsView({ onOpen: openSession });
+const wallView = createWallView();
 const usageView = createUsageView();
 // Same onOpen contract as the sessions view: the assistant's Run button creates a
 // custom session and hands it back here to open. The model never executes anything.
 const assistantView = createAssistantView({ onOpen: openSession });
 
-const tabViewApis = { sessions: sessionsView, assistant: assistantView, usage: usageView };
+const tabViewApis = { sessions: sessionsView, wall: wallView, assistant: assistantView, usage: usageView };
 
 const keybar = createKeybar(els.keybar, {
   send: (data) => term?.sendRaw(data),
@@ -771,11 +774,34 @@ async function loadKinds() {
   }
 }
 
+/**
+ * `?token=…` in the URL logs you straight in.
+ *
+ * This is how the setup instructions get the token onto a phone: the link is
+ * mailed or messaged to yourself and opened once. The value is moved into
+ * storage and then stripped from the address bar with replaceState, so the
+ * secret does not sit in the tab title, the back stack, or whatever the browser
+ * later syncs or offers to autocomplete.
+ */
+function takeTokenFromUrl() {
+  let url;
+  try { url = new URL(location.href); } catch { return; }
+  const candidate = url.searchParams.get('token');
+  if (!candidate) return;
+
+  url.searchParams.delete('token');
+  history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+
+  const trimmed = candidate.trim();
+  if (trimmed) setToken(trimmed);
+}
+
 async function boot() {
   initViewport();
   registerServiceWorker();
   initPushMessaging();
 
+  takeTokenFromUrl();
   const pendingSessionId = takePendingSessionId();
 
   if (!hasToken()) {
