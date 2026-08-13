@@ -52,6 +52,42 @@ load-bearing, not decorative.
 Tailscale and the token are independent layers. Someone would need to be on your tailnet *and*
 hold the token.
 
+4. **Two more secrets, once notifications are on.**
+   `.vapid.json` holds the private key that authenticates this Mac to Apple's and Google's push
+   services, and `.push-subscriptions.json` holds one record per subscribed phone — each enough to
+   send that phone a notification. Both are `0600` and gitignored, like `.token`. Only the *public*
+   half of the VAPID key ever reaches a browser.
+
+---
+
+## Notifications
+
+Start a long agent run, put the phone down, walk away — and get told when it finishes or when it
+is sitting on a prompt waiting for you.
+
+Turn it on in **⋯ menu › Notifications**. On iOS this only works once Vibermote is installed to the
+Home Screen (Share › Add to Home Screen); Safari refuses push in an ordinary tab, and the toggle
+says so rather than silently failing.
+
+**What you get told about — and nothing else:**
+
+| Event | When |
+|---|---|
+| Finished | The tool or command the session was launched with exited. |
+| Waiting for your input | The screen stopped changing for 45s, looks like a prompt, and nobody is watching it. |
+| Session ended | The tmux session went away on its own. Killing one from the app is silent. |
+
+Routine output never notifies. A session is limited to one notification a minute, and the server to
+six in five minutes, so a runaway process cannot turn into a stream of buzzing.
+
+**Notifications appear on your lock screen, so they are treated as public**: a session name (its
+project directory) and a status. Never command text, never model output, never the token. A tap
+opens that session directly.
+
+The Web Push encryption is implemented directly on Node's `crypto` rather than via a dependency;
+`npm run test:push` checks it against the published RFC 8188 and RFC 8291 test vectors and then
+sends a real encrypted notification to a loopback receiver and decrypts it back.
+
 ---
 
 ## Setup
@@ -170,6 +206,11 @@ variables too.
 | `CCR_HOST` | *(empty)* | Bind address **override**. Leave empty — the server finds your Tailscale address itself and falls back to loopback. Only a `100.64.0.0/10` address or `127.0.0.1` is accepted. |
 | `CCR_TMUX` | auto | Path to the tmux binary. |
 | `CCR_CLAUDE` | auto | Path to the `claude` binary. |
+| `CCR_VAPID_SUBJECT` | this deployment's URL | Contact URL in the VAPID token. Must be `mailto:` or `https:`. |
+| `CCR_PUSH_QUIET_MS` | `45000` | How long a session's screen must be still before it counts as waiting for you. Raise it if you get told too early. |
+| `CCR_PUSH_MIN_RUN_MS` | `30000` | A job must run at least this long for its exit to be worth a notification. |
+| `CCR_PUSH_COOLDOWN_MS` | `60000` | Minimum gap between two notifications about the same session. |
+| `CCR_PUSH_POLL_MS` | `5000` | How often tmux is sampled. |
 
 Restart the server after editing.
 
@@ -325,18 +366,23 @@ claude-remote/
 ├── com.tobias.claude-remote.plist   launchd agent (copy to ~/Library/LaunchAgents/)
 ├── .env                             your config (created by setup.sh)
 ├── .token                           bearer token, 0600 (created by setup.sh)
+├── .vapid.json                      web-push signing keypair, 0600 (created on first run)
+├── .push-subscriptions.json         subscribed phones, 0600 (created when you turn push on)
 ├── logs/                            server.out.log, server.err.log
 ├── scripts/
 │   ├── setup.sh                     one-time setup; safe to re-run
 │   ├── start-server.sh              launches the server (used by launchd too)
 │   ├── doctor.sh                    diagnostics — run this when it doesn't work
 │   ├── rotate-token.sh              replace the auth token
+│   ├── push-selftest.mjs            `npm run test:push` — web-push against the RFC vectors
 │   └── lib/common.sh                shared helpers
-├── server/                          node server: tmux control, PTY streaming, auth
+├── server/                          node server: tmux control, PTY streaming, auth, push
 └── public/                          the phone app (PWA, xterm.js, no build step)
 ```
 
-`.token` and `.env` must never be committed.
+`.token`, `.env`, `.vapid.json` and `.push-subscriptions.json` must never be committed.
+Deleting `.vapid.json` invalidates every phone's subscription — they must each turn
+notifications on again.
 
 ---
 

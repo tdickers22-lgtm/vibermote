@@ -196,6 +196,22 @@ export const api = {
   },
 
   /**
+   * One session by id. Used by the notification deep link, where the id arrives
+   * from outside the app and the list may not have loaded yet. A 404 means the
+   * session ended while the notification sat on the lock screen, which is an
+   * ordinary outcome rather than an error.
+   */
+  async getSession(id) {
+    try {
+      const payload = await request(`/api/sessions?id=${encodeURIComponent(id)}`);
+      return normaliseSession(payload?.session || payload);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) return null;
+      throw err;
+    }
+  },
+
+  /**
    * `GET /api/kinds`. Returns null when the server has no such endpoint, which
    * is the current state on disk — callers keep the built-in registry.
    */
@@ -389,6 +405,35 @@ export const api = {
 
   /** Re-read transcripts that changed on disk. */
   usageRefresh: () => request('/api/usage/refresh', { method: 'POST', timeout: 90000 }),
+
+  /* --------------------------------------------------------------- push *
+   * Notifications for "the agent finished" and "the agent is waiting for you".
+   * Authenticated like everything else — the bearer token rides in the
+   * Authorization header via request(), including on subscribe.
+   *
+   * A server too old to have these routes reports "off" rather than throwing,
+   * so the settings sheet says "not available" instead of showing an error. */
+
+  /** The VAPID public key the browser needs to subscribe. Public by design. */
+  pushKey: () => request('/api/push/key'),
+
+  async pushStatus() {
+    try {
+      return await request('/api/push/status');
+    } catch (err) {
+      if (err instanceof ApiError && err.isMissingEndpoint) return { enabled: false, count: 0, subscriptions: [] };
+      throw err;
+    }
+  },
+
+  /** `subscription.toJSON()` straight from the PushManager. */
+  pushSubscribe: (subscription) =>
+    request('/api/push/subscribe', { method: 'POST', body: subscription }),
+
+  pushUnsubscribe: (endpoint) =>
+    request('/api/push/unsubscribe', { method: 'POST', body: { endpoint } }),
+
+  pushTest: () => request('/api/push/test', { method: 'POST', timeout: 20000 }),
 };
 
 /** Validate a candidate token without persisting it. */

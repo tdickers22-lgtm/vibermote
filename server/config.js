@@ -28,6 +28,77 @@ export const TOKEN_PATH = path.join(PROJECT_ROOT, '.token');
  */
 export const SAVED_COMMANDS_PATH = path.join(PROJECT_ROOT, '.commands.json');
 
+/**
+ * VAPID keypair for Web Push, generated on first use and written 0600.
+ *
+ * The private key is what authenticates this server to Apple's and Google's
+ * push services as the owner of every subscription it holds, so it is a secret
+ * of the same weight as .token and is gitignored alongside it. Only the public
+ * half ever reaches a browser.
+ */
+export const VAPID_PATH = path.join(PROJECT_ROOT, '.vapid.json');
+
+/**
+ * Push subscriptions, one per installed phone. 0600 and gitignored: each record
+ * carries the endpoint URL plus the p256dh/auth key pair, and anyone holding
+ * those can push a notification to that device.
+ */
+export const PUSH_SUBSCRIPTIONS_PATH = path.join(PROJECT_ROOT, '.push-subscriptions.json');
+
+/**
+ * VAPID `sub` claim — a contact for whoever operates this push sender. RFC 8292
+ * requires a `mailto:` or `https:` URL, and Apple rejects a token without one.
+ * It is not verified by anyone, but it must be well-formed, so it defaults to
+ * this deployment's own public URL rather than to an invented address.
+ */
+export const VAPID_SUBJECT =
+  process.env.CCR_VAPID_SUBJECT || 'https://tobias-macbook-air-2025.tail47b83f.ts.net';
+
+/* ------------------------------------------------------------------ *
+ * Notification tuning
+ *
+ * Every constant here exists to keep the notification count low enough that
+ * the user never mutes the app. They are the difference between "my Mac tells
+ * me when the agent needs me" and a stream of noise.
+ * ------------------------------------------------------------------ */
+
+/** How often session-watch samples tmux. Cheap: one list-sessions + one capture-pane per session. */
+export const PUSH_POLL_MS = Number(process.env.CCR_PUSH_POLL_MS || 5000);
+
+/**
+ * A session whose visible pane has not changed for this long, having previously
+ * been changing, is a candidate for "waiting for input". Long enough that a
+ * model thinking between two frames is not mistaken for a finished turn.
+ */
+export const PUSH_QUIET_MS = Number(process.env.CCR_PUSH_QUIET_MS || 45_000);
+
+/**
+ * A foreground process must have run at least this long before its exit is
+ * worth a notification. Without it every `ls` in a shell session would push.
+ */
+export const PUSH_MIN_RUN_MS = Number(process.env.CCR_PUSH_MIN_RUN_MS || 30_000);
+
+/** No session may produce two notifications closer together than this. */
+export const PUSH_SESSION_COOLDOWN_MS = Number(process.env.CCR_PUSH_COOLDOWN_MS || 60_000);
+
+/**
+ * After a job exits, the shell prompt that replaces it repaints the pane. That
+ * is a screen change, and without this window it would re-arm the idle detector
+ * and produce a second "waiting for your input" for an event already reported.
+ * Changes inside this window still count as activity; they just do not re-arm.
+ */
+export const PUSH_EXIT_SETTLE_MS = Number(process.env.CCR_PUSH_SETTLE_MS || 10_000);
+
+/** Hard ceiling across all sessions, so a pathological loop cannot spam the phone. */
+export const PUSH_RATE_MAX = 6;
+export const PUSH_RATE_WINDOW_MS = 5 * 60_000;
+
+/** How long a push service should hold an undelivered notification. */
+export const PUSH_TTL_SECONDS = Number(process.env.CCR_PUSH_TTL || 4 * 60 * 60);
+
+/** Consecutive delivery failures before a subscription is dropped as dead. */
+export const PUSH_MAX_FAILURES = 8;
+
 /** Read-only source of resumable Claude Code sessions. NEVER written to. */
 export const CLAUDE_PROJECTS_DIR = path.join(HOME, '.claude', 'projects');
 

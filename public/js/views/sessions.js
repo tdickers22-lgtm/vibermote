@@ -11,6 +11,7 @@
 import { api, ApiError, clearToken } from '../api.js';
 import { allKinds, getKind, kindsReported, selectableKinds } from '../kinds.js';
 import { defaultCwd, homeDir, rememberCwd } from '../env.js';
+import { openPushSheet, pushMenuRow } from '../push.js';
 import {
   h, clear, icon, toast, sheet, confirmSheet,
   relativeTime, timestampOf, prettyPath, projectName, sanitizePreview,
@@ -899,6 +900,9 @@ export function createSessionsView({ onOpen }) {
       build(body, close) {
         body.append(
           menuItem('Refresh now', 'Re-read the session list', 'refresh', () => { close(); load(); }),
+          // Its own sheet: turning notifications on has to explain iOS's
+          // Home-Screen rule, and the permission prompt must come from a tap.
+          pushMenuRow(() => { close(); openPushSheet(); }),
           menuItem('Forget token', 'Sign out of this device', 'logout', async () => {
             close();
             const ok = await confirmSheet({

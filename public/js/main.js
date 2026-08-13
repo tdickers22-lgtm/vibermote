@@ -23,6 +23,7 @@ import {
   getSessionTerm, dropSessionTerm, disconnectAll, getFontSize, MAX_CACHED,
 } from './session-term.js';
 import { loadEnv, rememberCwd } from './env.js';
+import { initPushMessaging, syncPush } from './push.js';
 import { initViewport, onViewport } from './viewport.js';
 import {
   h, clear, icon, toast, sheet, confirmSheet, prettyPath, projectName,
@@ -221,6 +222,32 @@ async function openSession(session) {
 
   const live = await resumeSession(session);
   if (live) attachSession(live);
+}
+
+/**
+ * Open a session named only by id — the notification deep link.
+ *
+ * The id arrives from outside the app (a tap on a lock-screen card, possibly
+ * hours later), so the session may be in the list, may need fetching, or may
+ * have ended in the meantime. All three end somewhere sensible rather than on a
+ * blank terminal.
+ */
+async function openSessionById(id) {
+  if (!id) return;
+
+  const known = sessionsView.find(id);
+  if (known) {
+    openSession(known);
+    return;
+  }
+
+  try {
+    const session = await api.getSession(id);
+    if (session) openSession(session);
+    else toast('That session has already ended');
+  } catch (err) {
+    toast(err?.message || 'Could not open that session', { error: true });
+  }
 }
 
 /**
@@ -659,6 +686,31 @@ window.addEventListener('cr:unauthorized', () => {
   showToken({ message: 'That token was rejected. Paste the current one.' });
 });
 
+/* -------- notification taps -------- */
+
+// The service worker focuses an already-open app rather than navigating it,
+// which would discard every attached terminal — so it hands the session id over
+// as a message instead of a URL.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data?.type !== 'cr:open-session') return;
+    if (route === 'token') return; // not signed in; the list is unreachable anyway
+    openSessionById(event.data.sessionId);
+  });
+}
+
+/**
+ * A cold launch from a notification arrives as `?session=<id>`. It is stripped
+ * from the URL immediately so a later reload — or an "Add to Home Screen" from
+ * this state — does not keep reopening the same session forever.
+ */
+function takePendingSessionId() {
+  const id = new URL(location.href).searchParams.get('session');
+  if (!id) return null;
+  history.replaceState(history.state, '', location.pathname);
+  return id;
+}
+
 // The phone sleeps mid-session constantly; resume the stream the moment it wakes.
 document.addEventListener('visibilitychange', () => {
   if (document.hidden || route !== 'term') return;
@@ -722,6 +774,9 @@ async function loadKinds() {
 async function boot() {
   initViewport();
   registerServiceWorker();
+  initPushMessaging();
+
+  const pendingSessionId = takePendingSessionId();
 
   if (!hasToken()) {
     showToken();
@@ -747,6 +802,12 @@ async function boot() {
 
   await Promise.all([loadKinds(), loadEnv()]);
   showList();
+
+  // Re-register the push subscription this browser already holds. The only
+  // thing that repairs one iOS has expired, and a no-op otherwise.
+  syncPush().catch(() => {});
+
+  if (pendingSessionId) openSessionById(pendingSessionId);
 }
 
 /**

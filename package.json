@@ -11,7 +11,8 @@
   "scripts": {
     "start": "node server/index.js",
     "postinstall": "node server/postinstall.js",
-    "health": "node server/health-check.js"
+    "health": "node server/health-check.js",
+    "test:push": "node scripts/push-selftest.mjs"
   },
   "dependencies": {
     "node-pty": "1.1.0",

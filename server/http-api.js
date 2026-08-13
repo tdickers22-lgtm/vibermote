@@ -44,6 +44,7 @@ import { listAllSessions, findSession, listProjects, parseId } from './discovery
 import { BARE_LAUNCH_KIND, DEFAULT_KIND, MAX_COMMAND_LENGTH, describeKinds, getKind, kindIds } from './kinds.js';
 import { createSession, killSession, peekBroker, allBrokers } from './sessions.js';
 import { setMeta, deleteMeta } from './meta.js';
+import { handlePushApi } from './push.js';
 import {
   LIMITS as COMMAND_LIMITS,
   ValidationError,
@@ -501,6 +502,17 @@ async function handleApi(req, res, url, pathname, bindInfo) {
    * like any other hand-typed command. Returns false if the path is not its. */
   if (pathname === '/api/assistant' || pathname.startsWith('/api/assistant/')) {
     if (await handleAssistantApi({ req, res, url, pathname, method, readBody, sendJson })) return;
+  }
+
+  /* -------------------- web push -------------------- *
+   * The whole /api/push/ subtree lives in push.js. It sits here, below the
+   * checkAuth() gate in createHttpHandler(), for the same reason every other
+   * route does — and doubly so: /api/push/subscribe makes this server issue
+   * authenticated POSTs to a third-party push service, and /api/push/status
+   * discloses which devices are subscribed. Never hoist it above the gate.
+   * Returns false if the path is not its. */
+  if (pathname === '/api/push' || pathname.startsWith('/api/push/')) {
+    if (await handlePushApi({ req, res, url, pathname, method, readBody, sendJson })) return;
   }
 
   /* -------------------- create -------------------- *

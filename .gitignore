@@ -8,6 +8,16 @@ node_modules/
 .commands.json
 .commands.json.*.tmp
 saved-commands.json
+# The VAPID private key. It authenticates this server to Apple's and Google's
+# push services as the owner of every subscription it holds — a secret of the
+# same weight as .token. Only the public half is ever sent to a browser.
+.vapid.json
+.vapid.json.*.tmp
+# One record per subscribed phone. Each carries the push endpoint plus the
+# p256dh/auth key pair, and those together are enough to send a notification
+# to that device.
+.push-subscriptions.json
+.push-subscriptions.json.*.tmp
 logs/
 *.log
 .DS_Store

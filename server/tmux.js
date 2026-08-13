@@ -213,11 +213,21 @@ async function setSessionOption(name, option, value) {
  * Recent scrollback for instant context on attach.
  * `-e` keeps SGR escape sequences so colour survives; `-J` unwraps lines that
  * tmux hard-wrapped, which otherwise re-wrap wrongly at the phone's width.
+ *
+ * The target is `=<name>:` and not `=<name>`, for the same reason set-option
+ * needs it above: capture-pane resolves -t as a PANE target, and a bare
+ * `=<name>` is not one — tmux answers "can't find pane: =<name>" and exits 1.
+ * This call was silently failing that way, so every attach fell through to the
+ * in-memory ring buffer, which is empty after a server restart. That is why
+ * reattaching to a long-running session used to show a blank screen until the
+ * TUI happened to repaint. The trailing colon makes it a window target, which
+ * resolves to that window's active pane, and `=` still forbids prefix matching
+ * so we can never capture a session we did not name.
  */
 export async function capturePane(name, lines) {
   if (!isManaged(name)) return '';
   const res = await tmux(
-    ['capture-pane', '-p', '-e', '-J', '-S', `-${Math.max(0, lines)}`, '-t', `=${name}`],
+    ['capture-pane', '-p', '-e', '-J', '-S', `-${Math.max(0, lines)}`, '-t', `=${name}:`],
     { timeout: 5000 },
   );
   if (!res.ok) {
@@ -226,6 +236,26 @@ export async function capturePane(name, lines) {
   }
   // capture-pane pads the bottom with blank lines; trim them so the replay does
   // not push the live cursor position off-screen.
+  return res.stdout.replace(/\n+$/, '');
+}
+
+/**
+ * The pane's visible region as plain text — what the screen looks like right
+ * now, with no scrollback and no escape sequences.
+ *
+ * Deliberately unlike capturePane(): session-watch hashes this to decide whether
+ * anything changed, so `-e` would make every cursor move look like a content
+ * change, and any `-S` history would make the hash depend on scrollback that
+ * scrolls past on its own.
+ */
+export async function capturePaneVisible(name) {
+  if (!isManaged(name)) return '';
+  // `=${name}:` — a pane target, not a session one. See capturePane() above.
+  const res = await tmux(['capture-pane', '-p', '-J', '-t', `=${name}:`], { timeout: 5000 });
+  if (!res.ok) {
+    log.debug(`capture-pane (visible) failed for ${name}:`, res.stderr.trim());
+    return '';
+  }
   return res.stdout.replace(/\n+$/, '');
 }
 

@@ -24,6 +24,7 @@ import {
   TMUX_BIN,
 } from './config.js';
 import { DEFAULT_KIND, getKind, resolveKindBinary, tmuxNameFor } from './kinds.js';
+import { forgetSession } from './session-watch.js';
 import * as tmuxApi from './tmux.js';
 import { log, shQuote } from './util.js';
 
@@ -420,6 +421,9 @@ function basenameOf(p) {
 
 /** Kill a session for good, tearing down its broker first. */
 export async function killSession(name) {
+  // Before the session disappears: a kill the user asked for must not come back
+  // as an "ended" push notification on the phone they asked from.
+  forgetSession(name);
   const broker = peekBroker(name);
   if (broker) broker.dispose('killed');
   await tmuxApi.killSession(name);

@@ -11,12 +11,17 @@ import { describeKinds } from './kinds.js';
 import { resolveBindAddress } from './net.js';
 import { createHttpHandler } from './http-api.js';
 import { attachWebSocketServer } from './ws-api.js';
-import { detachAll, allBrokers } from './sessions.js';
+import { detachAll, allBrokers, peekBroker } from './sessions.js';
+import { loadOrCreateVapidKeys, subscriptionCount } from './push.js';
+import { startSessionWatch, stopSessionWatch } from './session-watch.js';
 import * as tmuxApi from './tmux.js';
 import { log } from './util.js';
 
 async function main() {
   const { created, path: tokenPath } = loadOrCreateToken();
+  // Generated on first run and then kept forever: rotating it would silently
+  // invalidate every phone's existing subscription.
+  const vapid = loadOrCreateVapidKeys();
 
   let bind;
   try {
@@ -67,6 +72,9 @@ async function main() {
   log.info(`  tmux        : ${tmuxVersion} at ${TMUX_BIN}`);
   log.info(`  root        : ${PROJECT_ROOT}`);
   log.info(`  token       : ${tokenPath}${created ? ' (generated just now)' : ''}`);
+  // The public half only — the private key is a secret of the same weight as
+  // the token and util.js redacts it from every log line as a backstop.
+  log.info(`  push        : ${subscriptionCount()} device(s), key ${vapid.publicKey.slice(0, 12)}…`);
   log.info(`  PATH        : ${HARDENED_PATH}`);
   // Report every kind at startup so a missing tool is obvious here rather than
   // at the moment the user taps "new session" on their phone.
@@ -81,12 +89,18 @@ async function main() {
   // The token itself is deliberately never printed; read it from the file.
   // (util.js also redacts it from every log line as a backstop.)
 
+  // Watches tmux for finished processes and sessions waiting on input, and
+  // pushes to subscribed phones. It polls tmux rather than the PTY because the
+  // PTY is gone by the time any of this matters — see session-watch.js.
+  startSessionWatch({ viewersOf: (name) => peekBroker(name)?.subscribers.size || 0 });
+
   /* -------------------- shutdown -------------------- */
   let shuttingDown = false;
   const shutdown = (signal) => {
     if (shuttingDown) return;
     shuttingDown = true;
     log.info(`${signal} received — detaching ${allBrokers().length} PTY(s); tmux sessions keep running`);
+    stopSessionWatch();
     // Detach, never kill: the whole point of tmux here is that the user's
     // work survives the remote server going away.
     detachAll();
