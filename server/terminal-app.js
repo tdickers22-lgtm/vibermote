@@ -247,6 +247,8 @@ export async function listTerminalWindows({ force = false } = {}) {
     cwd: w.cwd,
     minimized: w.minimized,
     busy: Boolean(w.busy),
+    rows: w.rows || 24,
+    cols: w.cols || 80,
     state: w.state || 'working',   // working | waiting | idle
     stillFor: w.stillFor || 0,
     screen: w.screen

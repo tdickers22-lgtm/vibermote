@@ -194,12 +194,13 @@
 
 /* ------------------------------------------------------------- composing */
 
+/* Wraps rather than scrolls, for the same reason the action row does: a key
+   pushed outside a scroll container is a key that does not exist on a phone. */
 .twin-keys {
   display: flex;
   flex: none;
+  flex-wrap: wrap;
   gap: 6px;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
   padding: 8px 8px 0;
   background: #2c2c2e;
 }
@@ -459,12 +460,14 @@
 @media (max-width: 600px) {
   .twin-zoom { padding-left: 0; padding-right: 0; }
   .twin-full { border-radius: 12px 12px 0 0; }
-  /* Monospace runs about 0.6em wide, so 9px fits ~72 columns across a 390px
-     phone -- enough for a whole 67-column window, which is what termtile
-     produces three-across. Wider windows still scroll sideways rather than
-     wrapping, because wrapping corrupts a TUI. */
-  .twin-screen-full { font-size: 9px; line-height: 1.32; }
+  /* Only a fallback: fitFont() sets the real size inline from the window's
+     actual column count, so a full line fits the width. */
+  .twin-screen-full { line-height: 1.32; }
   .twin-act { min-width: 0; flex: 1 1 22%; padding: 8px 6px; font-size: 11px; }
   .twin-acts { padding: 7px 7px calc(7px + env(safe-area-inset-bottom)); }
   .twin-foot { display: none; }   /* the path is already in the group heading */
 }
+
+.twin-key-gap { display: none; }
+.twin-key-size:first-of-type { margin-left: auto; }
+.twin-key-size { font-weight: 700; min-width: 34px; }

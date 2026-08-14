@@ -35,6 +35,10 @@ function main(light) {
   // Terminal's own answer to "is something running in here", which beats any
   // amount of guessing from the text on screen.
   const busy = bulk(() => term.windows.selectedTab.busy(), ids.length, false);
+  // The real grid. A tiled window is small (here 16 rows), while a phone has
+  // room for three times that, so the client needs to know the difference.
+  const rows = bulk(() => term.windows.selectedTab.numberOfRows(), ids.length, 24);
+  const cols = bulk(() => term.windows.selectedTab.numberOfColumns(), ids.length, 80);
 
   // The watcher only needs screens, and ttyCwdMap() is the expensive half of
   // this script (a ps sweep plus lsof). Skip it when the caller says so.
@@ -53,6 +57,8 @@ function main(light) {
       processes: procs[i] || [],
       minimized: Boolean(mini[i]),
       busy: Boolean(busy[i]),
+      rows: Number(rows[i]) || 24,
+      cols: Number(cols[i]) || 80,
       screen: trimBlank(String(screens[i] || ''))
     };
   });

@@ -59,6 +59,15 @@ export function createTerminalsView() {
   let vitals = null;
   let dialogs = [];
   /**
+   * Type-size preference, as a multiplier on the fitted size.
+   *
+   * Fitting a 101-column window across a phone lands around 6px, which is legible
+   * but tight. Whether that is the right trade depends on what is on screen --
+   * a TUI must not wrap, prose does not care -- so it is the user's call, and it
+   * persists because re-setting it every time would be worse than the default.
+   */
+  let fontScale = Number(localStorage.getItem('vm.fontScale')) || 1;
+  /**
    * When the Mac last answered. A frozen or dead Mac cannot tell you it is in
    * trouble -- the server is inside the thing that froze -- so the only honest
    * detector lives here, on the phone: how long since anything came back.
@@ -332,6 +341,54 @@ export function createTerminalsView() {
 
   /* ---------------------------------------------------------------- zoom */
 
+  /**
+   * Size the type so a full line of that window fits the phone's width.
+   *
+   * The windows on the Mac are 101 columns because termtile tiles them; a phone
+   * is 390px. Guessing a fixed size either clips every line or wastes half the
+   * screen, so it is derived from the window's actual column count. Monospace
+   * advance width is ~0.6em, and the result is clamped: below ~6px nothing is
+   * readable, above ~13px there is no point going further.
+   */
+  function fitFont(pre, cols) {
+    const width = pre.clientWidth - 20;      // padding
+    if (!width || !cols) return 10;
+    const fitted = (width / cols) / 0.6;
+    const size = Math.max(5, Math.min(22, fitted * fontScale));
+    return Math.round(size * 10) / 10;
+  }
+
+  /**
+   * How many lines of scrollback it takes to fill the box.
+   *
+   * A tiled Mac window is 16 rows, so mirroring only the visible screen leaves
+   * two thirds of a phone empty. The phone has the room, so it gets shown more
+   * history than the window itself is currently displaying.
+   */
+  function linesToFill(pre, fontSize) {
+    const lineHeight = fontSize * 1.32;
+    return Math.max(16, Math.min(400, Math.ceil(pre.clientHeight / lineHeight) + 4));
+  }
+
+  async function fillFromScrollback(w) {
+    const pre = document.querySelector('#terminals-zoom .twin-screen');
+    if (!pre) return;
+    const size = fitFont(pre, w.cols);
+    pre.style.fontSize = `${size}px`;
+    const want = linesToFill(pre, size);
+    if (want <= (w.rows || 16)) return;      // the visible screen already fills it
+    try {
+      const r = await api.terminalAction({
+        windowId: w.windowId, action: 'scrollback', arg: String(want),
+      });
+      if (r?.ok && r.text && zoomedId === w.id) {
+        const stick = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 24;
+        pre.textContent = r.text;
+        if (stick) pre.scrollTop = pre.scrollHeight;
+      }
+    } catch { /* the visible screen is already there as a fallback */ }
+  }
+
   function zoomEl() {
     let el = document.getElementById('terminals-zoom');
     if (el) return el;
@@ -373,7 +430,9 @@ export function createTerminalsView() {
       const pre = existing.querySelector('.twin-screen');
       const stick = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 24;
       pre.textContent = w.screen || '(nothing on screen)';
+      pre.style.fontSize = `${fitFont(pre, w.cols)}px`;
       if (stick) pre.scrollTop = pre.scrollHeight;
+      fillFromScrollback(w);
       return;
     }
 
@@ -395,6 +454,21 @@ export function createTerminalsView() {
       b.className = 'twin-key';
       b.textContent = glyph;
       b.addEventListener('click', () => sendKey(w, key));
+      keys.append(b);
+    }
+    const spacer = document.createElement('span');
+    spacer.className = 'twin-key-gap';
+    keys.append(spacer);
+    for (const [label, factor] of [['A\u2212', 1 / 1.15], ['A+', 1.15]]) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'twin-key twin-key-size';
+      b.textContent = label;
+      b.addEventListener('click', () => {
+        fontScale = Math.max(0.5, Math.min(3, fontScale * factor));
+        localStorage.setItem('vm.fontScale', String(fontScale));
+        fillFromScrollback(w);     // re-fit, and re-fill for the new line count
+      });
       keys.append(b);
     }
 
@@ -461,6 +535,8 @@ export function createTerminalsView() {
     win.append(titleBar(w, { withClose: true }), screen, keys, form, acts, foot);
     el.append(win);
     screen.scrollTop = screen.scrollHeight;
+    // Sized and filled after layout, when clientWidth/Height are real.
+    requestAnimationFrame(() => fillFromScrollback(w));
   }
 
   /* --------------------------------------------------------------- input */
