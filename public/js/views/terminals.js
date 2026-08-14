@@ -354,7 +354,14 @@ export function createTerminalsView() {
     const width = pre.clientWidth - 20;      // padding
     if (!width || !cols) return 10;
     const fitted = (width / cols) / 0.6;
-    const size = Math.max(5, Math.min(22, fitted * fontScale));
+    /**
+     * The floor matters more than the fit. A tiled window is now ~111 columns
+     * wide, and fitting all of them across a 390px phone lands near 5px, which
+     * is not text any more. Readability wins: below FLOOR the line simply
+     * scrolls sideways instead of shrinking further.
+     */
+    const FLOOR = 9.5;
+    const size = Math.max(FLOOR, Math.min(22, Math.max(fitted, FLOOR) * fontScale));
     return Math.round(size * 10) / 10;
   }
 
